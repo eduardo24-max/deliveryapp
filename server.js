@@ -34,8 +34,8 @@ const SMTP_TIMEOUTS = {
 const transporter = USE_BREVO
     ? nodemailer.createTransport({
           host: 'smtp-relay.brevo.com',
-          port: 587,
-          secure: false,
+          port: 465,
+          secure: true,
           auth: {
               user: process.env.BREVO_USER,
               pass: process.env.BREVO_PASS
@@ -56,7 +56,14 @@ if (USE_BREVO) {
 }
 
 // Remitente de los emails. Con Brevo se usa la cuenta de login; con Gmail el ADMIN_EMAIL.
-const EMAIL_FROM = USE_BREVO ? process.env.BREVO_USER : process.env.ADMIN_EMAIL;
+// Remitente de los emails.
+// 1) Resend: usa la dirección de prueba (no requiere dominio verificado)
+// 2) Brevo: usa la cuenta de login
+// 3) Gmail: usa el ADMIN_EMAIL
+const USE_RESEND = !!(process.env.RESEND_API_KEY);
+const EMAIL_FROM = USE_RESEND
+    ? 'DeliveryApp <onboarding@resend.dev>'
+    : (USE_BREVO ? process.env.BREVO_USER : process.env.ADMIN_EMAIL);
 
 // Almacenamiento persistente
 // En producción usa Supabase (nube). En local usa database.json como fallback.
@@ -129,11 +136,44 @@ let adminEmail = process.env.ADMIN_EMAIL;
 let emailCodes = {}; // Códigos de verificación temporales
 
 // ============================================================
-// Envío de emails central (usando SMTP con reintentos)
+// Envío de emails central
+// 1) RESEND_API_KEY -> API de Resend (HTTPS, fiable desde Render)
+// 2) BREVO (SMTP)   -> con reintentos
+// 3) Gmail          -> respaldo local
 // ============================================================
+const RESEND_API_KEY = process.env.RESEND_API_KEY || null;
+
 async function sendEmail({ to, subject, html }) {
+    // Método 1: API Resend (HTTPS 443 - nunca sufre timeout de SMTP)
+    if (RESEND_API_KEY) {
+        try {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + RESEND_API_KEY
+                },
+                body: JSON.stringify({
+                    from: EMAIL_FROM,
+                    to: [to],
+                    subject,
+                    html
+                })
+            });
+            if (res.ok) {
+                const d = await res.json();
+                console.log(`📧 Email enviado vía Resend a ${to} (id ${d.id})`);
+                return true;
+            }
+            const err = await res.text();
+            console.error('Resend error:', res.status, err);
+        } catch (e) {
+            console.error('Resend error de red:', e.message);
+        }
+    }
+
+    // Método 2: SMTP (Brevo/Gmail) con reintentos
     let lastErr = null;
-    // Varios intentos para tolerar timeouts intermitentes de la red
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
@@ -145,7 +185,7 @@ async function sendEmail({ to, subject, html }) {
             if (attempt < 3) await new Promise(r => setTimeout(r, 3000));
         }
     }
-    console.error('Email no se pudo enviar tras 3 intentos:', lastErr && lastErr.message);
+    console.error('Email no se pudo enviar tras intentos:', lastErr && lastErr.message);
     return false;
 }
 
