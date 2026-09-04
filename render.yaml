@@ -1,0 +1,21 @@
+# Configuración de Render (despliegue automático)
+# Con este archivo, Render configura el servicio solo (Build y Start ya vienen definidos)
+services:
+  - type: web
+    name: delivery-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false

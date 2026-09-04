@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - DeliveryApp</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-header {
+            background: #1e293b;
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .admin-stat {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .admin-stat h3 {
+            font-size: 32px;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+        .admin-stat p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .user-card {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .user-info h4 {
+            margin-bottom: 4px;
+            color: #1e293b;
+        }
+        .user-info p {
+            color: #64748b;
+            font-size: 14px;
+            margin: 2px 0;
+        }
+        .user-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-approve {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-reject {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-driver {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-customer {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .no-users {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+            background: white;
+            border-radius: 10px;
+        }
+        @media (max-width: 768px) {
+            .admin-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .user-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login de Admin -->
+    <div id="admin-login">
+        <div style="max-width:400px;margin:100px auto;padding:20px;">
+            <div style="background:white;padding:30px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <div style="font-size:48px;">👨‍💼</div>
+                    <h2 style="color:#1e293b;margin:10px 0;">Panel de Administración</h2>
+                    <p style="color:#64748b;">Acceso restringido</p>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="admin-email" placeholder="tu@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="admin-password" placeholder="••••••••" required>
+                </div>
+                <button class="btn-primary" onclick="adminLogin()">Acceder</button>
+                <div style="text-align:center;margin-top:12px;">
+                    <a href="/" style="color:#2563eb;text-decoration:none;">← Volver a la app</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Admin -->
+    <div id="admin-panel" style="display:none;">
+    <header class="admin-header">
+        <h1>👨‍💼 Panel de Administración</h1>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <span style="font-size:14px;color:#94a3b8;">Hola, Eduardo</span>
+            <a href="#" class="btn-logout" onclick="logoutAdmin();return false;">Cerrar sesión</a>
+            <a href="/" class="btn-logout">Ver la app</a>
+        </div>
+    </header>
+
+    <div class="content">
+        <!-- Estadísticas -->
+        <div class="admin-stats">
+            <div class="admin-stat">
+                <h3 id="stat-total">0</h3>
+                <p>Usuarios Totales</p>
+            </div>
+            <div class="admin-stat">
+                <h3 id="stat-pending">0</h3>
+                <p>Pendientes</p>
+            </div>
+            <div class="admin-stat">
+                <h3 id="stat-orders">0</h3>
+                <p>Pedidos</p>
+            </div>
+            <div class="admin-stat">
+                <h3 id="stat-delivered">0</h3>
+                <p>Entregados</p>
+            </div>
+        </div>
+
+        <!-- Usuarios Pendientes -->
+        <div class="orders-section">
+            <h3>⏳ Usuarios Pendientes de Aprobación</h3>
+            <div id="pending-users" class="orders-list">
+                <p class="no-users">No hay usuarios pendientes</p>
+            </div>
+        </div>
+
+        <!-- Todos los Usuarios -->
+        <div class="orders-section">
+            <h3>👥 Todos los Usuarios</h3>
+            <div id="all-users" class="orders-list">
+                <p class="no-users">No hay usuarios registrados</p>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal de Notificación -->
+    <div id="notification-modal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-body">
+                <div id="notification-icon" class="notification-icon"></div>
+                <h3 id="notification-title"></h3>
+                <p id="notification-message"></p>
+                <button id="notification-close" class="btn-primary">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let admin = null;
+
+        async function adminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+
+            if (!email || !password) {
+                alert('Ingresa tu email y contraseña');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    localStorage.setItem('adminLogged', 'true');
+                    document.getElementById('admin-login').style.display = 'none';
+                    document.getElementById('admin-panel').style.display = 'block';
+                    showAdminContent();
+                } else {
+                    alert('Credenciales incorrectas');
+                }
+            } catch (error) {
+                alert('No se pudo conectar al servidor');
+            }
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem('adminLogged');
+            location.reload();
+        }
+
+        function showAdminContent() {
+            if (!admin) {
+                admin = new AdminPanel();
+                admin.init();
+            } else {
+                admin.loadData().then(() => admin.render());
+            }
+        }
+
+        (function checkAdminSession() {
+            if (localStorage.getItem('adminLogged') === 'true') {
+                document.getElementById('admin-login').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                showAdminContent();
+            }
+        })();
+
+        class AdminPanel {
+            constructor() {
+                this.users = [];
+                this.orders = [];
+            }
+
+            async init() {
+                await this.loadData();
+                this.setupEventListeners();
+                this.render();
+            }
+
+            setupEventListeners() {
+                document.getElementById('notification-close').addEventListener('click', () => {
+                    document.getElementById('notification-modal').classList.remove('active');
+                });
+            }
+
+            async loadData() {
+                try {
+                    const usersRes = await fetch('/api/users');
+                    const usersData = await usersRes.json();
+                    this.users = usersData.users || [];
+
+                    const ordersRes = await fetch('/api/orders');
+                    const ordersData = await ordersRes.json();
+                    this.orders = ordersData.orders || [];
+
+                    const statsRes = await fetch('/api/stats');
+                    const statsData = await statsRes.json();
+                    this.stats = statsData.stats || {};
+                } catch (error) {
+                    console.error('Error cargando datos:', error);
+                }
+            }
+
+            render() {
+                // Actualizar estadísticas
+                document.getElementById('stat-total').textContent = this.stats.totalUsers || 0;
+                document.getElementById('stat-pending').textContent = this.stats.pendingUsers || 0;
+                document.getElementById('stat-orders').textContent = this.stats.totalOrders || 0;
+                document.getElementById('stat-delivered').textContent = this.stats.deliveredOrders || 0;
+
+                // Renderizar usuarios pendientes
+                const pendingUsers = this.users.filter(u => !u.approved);
+                const pendingContainer = document.getElementById('pending-users');
+                
+                if (pendingUsers.length === 0) {
+                    pendingContainer.innerHTML = '<p class="no-users">No hay usuarios pendientes</p>';
+                } else {
+                    pendingContainer.innerHTML = pendingUsers.map(user => `
+                        <div class="user-card">
+                            <div class="user-info">
+                                <h4>${user.name}</h4>
+                                <p>📧 ${user.email}</p>
+                                <p>📱 ${user.phone}</p>
+                                <span class="${user.role === 'driver' ? 'badge-driver' : 'badge-customer'}">
+                                    ${user.role === 'driver' ? '🚚 Repartidor' : '🛒 Cliente'}
+                                </span>
+                                ${user.vehicle ? `<span class="badge-pending">${user.vehicle}</span>` : ''}
+                            </div>
+                            <div class="user-actions">
+                                <button class="btn-approve" onclick="admin.approveUser(${user.id}, true)">
+                                    ✓ Aprobar
+                                </button>
+                                <button class="btn-reject" onclick="admin.approveUser(${user.id}, false)">
+                                    ✗ Rechazar
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Renderizar todos los usuarios
+                const allContainer = document.getElementById('all-users');
+                const approvedUsers = this.users.filter(u => u.approved);
+                
+                if (approvedUsers.length === 0) {
+                    allContainer.innerHTML = '<p class="no-users">No hay usuarios aprobados</p>';
+                } else {
+                    allContainer.innerHTML = approvedUsers.map(user => `
+                        <div class="user-card">
+                            <div class="user-info">
+                                <h4>${user.name}</h4>
+                                <p>📧 ${user.email}</p>
+                                <p>📱 ${user.phone}</p>
+                                <span class="${user.role === 'driver' ? 'badge-driver' : 'badge-customer'}">
+                                    ${user.role === 'driver' ? '🚚 Repartidor' : '🛒 Cliente'}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            async approveUser(userId, approved) {
+                try {
+                    const response = await fetch(`/api/users/${userId}/approve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ approved })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        this.showNotification('success', 'Éxito', result.message);
+                        await this.loadData();
+                        this.render();
+                    } else {
+                        this.showNotification('error', 'Error', result.message);
+                    }
+                } catch (error) {
+                    this.showNotification('error', 'Error', 'No se pudo procesar');
+                }
+            }
+
+            showNotification(type, title, message) {
+                const icons = { 'success': '✅', 'error': '❌', 'info': 'ℹ️' };
+                document.getElementById('notification-icon').textContent = icons[type] || 'ℹ️';
+                document.getElementById('notification-title').textContent = title;
+                document.getElementById('notification-message').textContent = message;
+                document.getElementById('notification-modal').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+﻿node_modules/
+.env
+*.log
+.DS_Store
+database.json
+DeliveryApp-PUBLICAR.zip
+test-email.js
+test-register.js
+server.log
+api.js
+app.js
+styles.css

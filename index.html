@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliveryApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #64748b; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --text-light: #64748b; --border: #e2e8f0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .screen { display: none; min-height: 100vh; }
+        .screen.active { display: block; }
+        .auth-container { max-width: 400px; margin: 0 auto; padding: 40px 20px; }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo-icon { font-size: 60px; margin-bottom: 10px; }
+        .logo h1 { font-size: 28px; color: var(--primary); }
+        .logo p { color: var(--text-light); }
+        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: var(--border); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .auth-form { display: none; background: var(--card); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .auth-form.active { display: block; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-size: 16px; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .btn-primary { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { padding: 12px 24px; background: var(--secondary); color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .header { background: var(--primary); color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 10px; }
+        .header h2 { font-size: 18px; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .user-name { font-weight: 500; }
+        .btn-logout { padding: 8px 16px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; text-decoration: none; font-size: 14px; }
+        .content { padding: 20px; max-width: 800px; margin: 0 auto; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: var(--card); padding: 16px; border-radius: 10px; text-align: center; }
+        .stat-number { display: block; font-size: 24px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--text-light); }
+        .new-order-card { background: var(--card); padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+        .new-order-card h3 { margin-bottom: 16px; }
+        .orders-section { margin-bottom: 24px; }
+        .orders-section h3 { margin-bottom: 12px; }
+        .orders-list { display: flex; flex-direction: column; gap: 12px; }
+        .no-orders { text-align: center; color: var(--text-light); padding: 40px; background: var(--card); border-radius: 10px; }
+        .order-card { background: var(--card); padding: 16px; border-radius: 10px; border-left: 4px solid var(--primary); }
+        .order-card.pending { border-left-color: var(--warning); }
+        .order-card.assigned { border-left-color: #8b5cf6; }
+        .order-card.delivered { border-left-color: var(--success); }
+        .order-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .order-id { font-weight: 700; color: var(--primary); font-size: 14px; }
+        .order-status { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .order-status.pending { background: #fef3c7; color: #92400e; }
+        .order-status.assigned { background: #ede9fe; color: #5b21b6; }
+        .order-status.delivered { background: #dcfce7; color: #166534; }
+        .order-info { display: grid; gap: 8px; margin-bottom: 12px; }
+        .order-info p { font-size: 14px; }
+        .order-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .order-actions button { flex: 1; min-width: 100px; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-accept { background: var(--success); color: white; }
+        .btn-deliver { background: var(--primary); color: white; }
+        .btn-track { background: var(--secondary); color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--card); border-radius: 12px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-small { max-width: 350px; text-align: center; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-light); }
+        .modal-body { padding: 20px; }
+        .modal-footer { display: flex; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); }
+        .modal-footer button { flex: 1; }
+        .delivery-info { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+        .delivery-info h4 { margin-bottom: 12px; }
+        .delivery-info p { margin-bottom: 8px; font-size: 14px; }
+        .security-code-section { margin-bottom: 20px; }
+        .security-code-section h4 { margin-bottom: 8px; }
+        #security-code { width: 100%; padding: 16px; font-size: 24px; text-align: center; letter-spacing: 8px; border: 2px solid var(--border); border-radius: 8px; }
+        .payment-section h4 { margin-bottom: 12px; }
+        .payment-options { display: flex; gap: 12px; margin-bottom: 16px; }
+        .payment-option { flex: 1; cursor: pointer; }
+        .payment-option input { display: none; }
+        .payment-label { display: block; padding: 16px; text-align: center; background: #f8fafc; border: 2px solid var(--border); border-radius: 8px; cursor: pointer; }
+        .payment-option input:checked + .payment-label { border-color: var(--primary); background: #eff6ff; }
+        .amount-display { background: #f8fafc; padding: 16px; border-radius: 8px; text-align: center; }
+        .amount-display strong { font-size: 24px; color: var(--primary); }
+        .card-info-message { background: #eff6ff; border: 2px solid var(--primary); border-radius: 8px; padding: 16px; text-align: center; margin-top: 12px; }
+        .card-info-message .phone-number { font-size: 24px; font-weight: 700; color: var(--primary); margin: 8px 0; }
+        .notification-icon { font-size: 48px; margin-bottom: 16px; }
+        .track-badge { padding: 8px 20px; border-radius: 20px; font-size: 16px; font-weight: 700; color: white; display: inline-block; }
+        .track-badge.pending { background: #f59e0b; }
+        .track-badge.assigned { background: #2563eb; }
+        .track-badge.delivered { background: #22c55e; }
+        .track-progress { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; padding: 10px 0; }
+        .track-step { display: flex; flex-direction: column; align-items: center; text-align: center; width: 60px; opacity: 0.4; }
+        .track-step .step-icon { font-size: 24px; margin-bottom: 6px; }
+        .track-step .step-label { font-size: 11px; color: #64748b; }
+        .track-step.done { opacity: 1; }
+        .track-step.active .step-icon { animation: pulse 1s infinite; }
+        @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1)} }
+        .track-connector { flex: 1; height: 3px; background: #e2e8f0; margin: 0 5px; margin-bottom: 22px; }
+        .track-connector.done { background: #22c55e; }
+        .track-driver { background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+        .track-driver p { font-size: 14px; margin-bottom: 6px; }
+        .track-info { text-align: center; color: #64748b; font-size: 14px; padding: 10px; }
+        @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } .stat-card { padding: 12px 8px; } .stat-number { font-size: 20px; } .payment-options { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen" class="screen active">
+    <div class="auth-container">
+        <div class="logo">
+            <div class="logo-icon">📦</div>
+            <h1>DeliveryApp</h1>
+            <p>Sistema de Delivery</p>
+        </div>
+        <div class="auth-tabs">
+            <button type="button" class="tab-btn active" id="tab-login" onclick="showTab('login')">Iniciar Sesión</button>
+            <button type="button" class="tab-btn" id="tab-register" onclick="showTab('register')">Registrarse</button>
+        </div>
+
+        <!-- Login -->
+        <form id="login-form" class="auth-form active" onsubmit="doLogin(event)">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="tu@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="login-password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary">Iniciar Sesión</button>
+        </form>
+
+        <!-- Register -->
+        <form id="register-form" class="auth-form" onsubmit="doRegister(event)">
+            <div class="form-group">
+                <label>Nombre completo</label>
+                <input type="text" id="reg-name" placeholder="Juan Pérez" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="reg-email" placeholder="tu@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="tel" id="reg-phone" placeholder="11 1234-5678" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="reg-password" placeholder="••••••••" required>
+            </div>
+            <div class="form-group">
+                <label>Tipo de usuario</label>
+                <select id="reg-role" required onchange="document.getElementById('vehicle-group').style.display=this.value==='driver'?'block':'none'">
+                    <option value="customer">Cliente</option>
+                    <option value="driver">Repartidor</option>
+                </select>
+            </div>
+            <div class="form-group" id="vehicle-group" style="display:none;">
+                <label>Vehículo</label>
+                <select id="reg-vehicle"><option value="moto">Moto</option><option value="bici">Bicicleta</option><option value="auto">Auto</option></select>
+            </div>
+            <button type="submit" class="btn-primary">Registrarse</button>
+        </form>
+
+        <!-- Verificación -->
+        <div id="verify-form" class="auth-form" style="text-align:center;">
+            <div style="font-size:48px;">📧</div>
+            <h3 style="margin:10px 0;">Verifica tu correo</h3>
+            <p style="color:#64748b;font-size:14px;">Te enviamos un código de 6 dígitos a:</p>
+            <p style="font-weight:bold;color:#2563eb;margin-bottom:16px;" id="verify-email-display"></p>
+            <div class="form-group">
+                <input type="text" id="verify-code" placeholder="000000" maxlength="6" style="font-size:24px;text-align:center;letter-spacing:8px;" required>
+            </div>
+            <button type="button" class="btn-primary" onclick="doVerify()">Verificar Código</button>
+            <p style="margin-top:12px;"><a href="#" onclick="doResendCode();return false;" style="color:#2563eb;font-size:14px;">Reenviar código</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- CUSTOMER -->
+<div id="customer-screen" class="screen">
+    <header class="header">
+        <h2>Mis Pedidos</h2>
+        <div class="header-right">
+            <span id="customer-name" class="user-name"></span>
+            <button class="btn-logout" onclick="logout()">Salir</button>
+        </div>
+    </header>
+    <div class="content">
+        <div class="new-order-card">
+            <h3>🛒 Nuevo Pedido</h3>
+            <form onsubmit="createOrder(event)">
+                <div class="form-group"><label>Descripción del pedido</label><textarea id="order-description" placeholder="Ej: 2 Hamburguesas, 1 Papa frita..." required></textarea></div>
+                <div class="form-group"><label><input type="checkbox" id="order-tip-check" onchange="document.getElementById('tip-amount-group').style.display=this.checked?'block':'none';"> ¿Deseas agregar propina?</label></div>
+                <div class="form-group" id="tip-amount-group" style="display:none;"><label>Monto de propina ($)</label><input type="number" id="order-tip" placeholder="0.00" step="0.01" min="0"></div>
+                <div class="form-group">
+                    <label>📍 Tu ubicación</label>
+                    <p id="loc-status" style="font-size:13px;color:#64748b;margin-top:4px;">Tu ubicación se detecta automáticamente al enviar el pedido</p>
+                </div>
+                <button type="submit" class="btn-primary" id="create-order-btn">Realizar Pedido</button>
+            </form>
+        </div>
+        <div class="orders-section"><h3>Mis Pedidos</h3><div id="customer-orders" class="orders-list"><p class="no-orders">No tienes pedidos aún</p></div></div>
+    </div>
+</div>
+
+<!-- DRIVER -->
+<div id="driver-screen" class="screen">
+    <header class="header">
+        <h2>🚚 Panel de Repartidor</h2>
+        <div class="header-right">
+            <span id="driver-name" class="user-name"></span>
+            <button class="btn-logout" onclick="logout()">Salir</button>
+        </div>
+    </header>
+    <div class="content">
+        <div class="stats-grid">
+            <div class="stat-card"><span class="stat-number" id="pending-count">0</span><span class="stat-label">Pendientes</span></div>
+            <div class="stat-card"><span class="stat-number" id="delivered-count">0</span><span class="stat-label">Entregados</span></div>
+            <div class="stat-card"><span class="stat-number" id="earnings">$0</span><span class="stat-label">Ganancias</span></div>
+        </div>
+        <div class="orders-section"><h3>Pedidos Disponibles</h3><div id="available-orders" class="orders-list"><p class="no-orders">No hay pedidos disponibles</p></div></div>
+        <div class="orders-section"><h3>Mis Entregas Activas</h3><div id="my-deliveries" class="orders-list"><p class="no-orders">No tienes entregas activas</p></div></div>
+    </div>
+</div>
+
+<!-- Modal Entrega -->
+<div id="delivery-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>✅ Confirmar Entrega</h3><button class="modal-close" onclick="closeModal('delivery-modal')">&times;</button></div>
+        <div class="modal-body">
+            <div class="delivery-info"><h4>Información del Cliente</h4><p><strong>Nombre:</strong> <span id="m-name"></span></p><p><strong>Teléfono:</strong> <span id="m-phone"></span></p><p><strong>Ubicación:</strong> <span id="m-address">Ubicación GPS</span></p><p><strong>Descripción:</strong> <span id="m-desc"></span></p><button type="button" class="btn-track" id="m-loc-btn" style="margin-top:10px;" onclick="openClientMap()">📍 Ver ubicación del cliente en mapa</button></div>
+            <div class="security-code-section"><h4>🔐 Código de Seguridad</h4><p>Ingresa el código de 6 dígitos del cliente:</p><input type="text" id="security-code" maxlength="6" placeholder="000000" style="width:100%;padding:16px;font-size:24px;text-align:center;letter-spacing:8px;border:2px solid #e2e8f0;border-radius:8px;"></div>
+            <div class="amount-display" style="margin-bottom:12px;"><label style="font-weight:600;">Monto a cobrar ($)</label><input type="number" id="delivery-amount" placeholder="0.00" step="0.01" style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:18px;text-align:center;"></div>
+            <div class="payment-section"><h4>💳 Método de Pago</h4>
+                <div class="payment-options">
+                    <label class="payment-option"><input type="radio" name="payment-method" value="cash" checked onchange="toggleCardInfo()"><span class="payment-label">💵 Efectivo</span></label>
+                    <label class="payment-option"><input type="radio" name="payment-method" value="card" onchange="toggleCardInfo()"><span class="payment-label">💳 Tarjeta</span></label>
+                </div>
+                <div id="card-info-msg" class="card-info-message" style="display:none;"><p>📞 Para pagar con tarjeta, comunícate al:</p><p class="phone-number">6182716305</p></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('delivery-modal')">Cancelar</button>
+            <button class="btn-primary" onclick="confirmDelivery()">Confirmar Entrega</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Seguimiento -->
+<div id="track-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>📍 Seguimiento</h3><button class="modal-close" onclick="closeTrack()">&times;</button></div>
+        <div class="modal-body">
+            <div style="text-align:center;margin-bottom:16px;"><span class="track-badge pending" id="track-badge">Pendiente</span></div>
+            <div class="track-progress">
+                <div class="track-step done" id="ts1"><span class="step-icon">🛒</span><span class="step-label">Creado</span></div>
+                <div class="track-connector" id="tc1"></div>
+                <div class="track-step" id="ts2"><span class="step-icon">🚚</span><span class="step-label">Asignado</span></div>
+                <div class="track-connector" id="tc2"></div>
+                <div class="track-step" id="ts3"><span class="step-icon">🏃</span><span class="step-label">En camino</span></div>
+                <div class="track-connector" id="tc3"></div>
+                <div class="track-step" id="ts4"><span class="step-icon">✅</span><span class="step-label">Entregado</span></div>
+            </div>
+            <div class="track-driver"><p><strong>Repartidor:</strong> <span id="t-driver">Buscando...</span></p><p><strong>Teléfono:</strong> <span id="t-phone">-</span></p></div>
+            <div style="border-radius:8px;overflow:hidden;margin-bottom:12px;"><iframe id="t-map" src="" style="width:100%;height:250px;border:0;" allowfullscreen loading="lazy"></iframe></div>
+            <p class="track-info" id="t-info">Procesando...</p>
+        </div>
+        <div class="modal-footer"><button class="btn-secondary" onclick="closeTrack()">Cerrar</button></div>
+    </div>
+</div>
+
+<!-- Modal Notificación -->
+<div id="notif-modal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-body">
+            <div id="notif-icon" class="notification-icon"></div>
+            <h3 id="notif-title"></h3>
+            <p id="notif-msg" style="margin:10px 0;"></p>
+            <button class="btn-primary" onclick="closeModal('notif-modal')">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentUser = null;
+var currentOrder = null;
+var pendingEmail = null;
+var pollDriver = null;
+var pollCustomer = null;
+var pollTrack = null;
+var trackingOrder = null;
+var custLocation = null;
+var knownOrderIds = {};
+
+function notifySound() {
+    try {
+        var audio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+        audio.play();
+    } catch(e) {}
+}
+
+function displayAddress(o) {
+    if (o && o.customerLocation && o.customerLocation.lat) {
+        return 'Ubicación GPS';
+    }
+    return (o && o.address) || 'Sin dirección';
+}
+
+function showTab(t) {
+    document.getElementById('tab-login').className = 'tab-btn' + (t==='login'?' active':'');
+    document.getElementById('tab-register').className = 'tab-btn' + (t==='register'?' active':'');
+    document.getElementById('login-form').className = 'auth-form' + (t==='login'?' active':'');
+    document.getElementById('register-form').className = 'auth-form' + (t==='register'?' active':'');
+    document.getElementById('verify-form').className = 'auth-form';
+    document.getElementById('verify-form').style.display = 'none';
+}
+
+function notify(type, title, msg) {
+    var icons = {success:'✅', error:'❌', info:'ℹ️'};
+    document.getElementById('notif-icon').textContent = icons[type]||'ℹ️';
+    document.getElementById('notif-title').textContent = title;
+    document.getElementById('notif-msg').textContent = msg;
+    document.getElementById('notif-modal').classList.add('active');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// === REGISTER ===
+function doRegister(e) {
+    e.preventDefault();
+    var data = {
+        name: document.getElementById('reg-name').value,
+        email: document.getElementById('reg-email').value,
+        phone: document.getElementById('reg-phone').value,
+        password: document.getElementById('reg-password').value,
+        role: document.getElementById('reg-role').value,
+        vehicle: document.getElementById('reg-role').value === 'driver' ? document.getElementById('reg-vehicle').value : null
+    };
+    fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+    .then(function(r){return r.json()})
+    .then(function(res){
+        if (res.success) {
+            pendingEmail = data.email;
+            document.getElementById('verify-email-display').textContent = data.email;
+            document.getElementById('verify-code').value = '';
+            document.getElementById('login-form').className = 'auth-form';
+            document.getElementById('register-form').className = 'auth-form';
+            document.getElementById('verify-form').className = 'auth-form active';
+            document.getElementById('verify-form').style.display = 'block';
+        } else {
+            notify('error','Error', res.message);
+        }
+    })
+    .catch(function(){ notify('error','Error','No se pudo conectar al servidor'); });
+}
+
+// === VERIFY ===
+function doVerify() {
+    var code = document.getElementById('verify-code').value;
+    if (!code || code.length !== 6) { notify('error','Error','Ingresa el código de 6 dígitos'); return; }
+    fetch('/api/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:pendingEmail, code:code})})
+    .then(function(r){return r.json()})
+    .then(function(res){
+        if (res.success) {
+            notify('success','¡Verificado!', res.message);
+            document.getElementById('verify-form').style.display = 'none';
+            document.getElementById('register-form').reset();
+            pendingEmail = null;
+            showTab('login');
+        } else {
+            notify('error','Error', res.message);
+        }
+    })
+    .catch(function(){ notify('error','Error','No se pudo verificar'); });
+}
+
+function doResendCode() {
+    fetch('/api/resend-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:pendingEmail})})
+    .then(function(r){return r.json()})
+    .then(function(res){ notify(res.success?'success':'error', res.success?'Código reenviado':'Error', res.message); })
+    .catch(function(){ notify('error','Error','No se pudo reenviar'); });
+}
+
+// === LOGIN ===
+function doLogin(e) {
+    e.preventDefault();
+    var email = document.getElementById('login-email').value;
+    var password = document.getElementById('login-password').value;
+    fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email, password:password})})
+    .then(function(r){return r.json()})
+    .then(function(res){
+        if (res.success) {
+            currentUser = res.user;
+            document.getElementById('auth-screen').classList.remove('active');
+            if (res.user.role === 'customer') {
+                document.getElementById('customer-screen').classList.add('active');
+                document.getElementById('customer-name').textContent = res.user.name;
+                loadCustOrders();
+                if (pollCustomer) clearInterval(pollCustomer);
+                pollCustomer = setInterval(loadCustOrders, 5000);
+            } else {
+                document.getElementById('driver-screen').classList.add('active');
+                document.getElementById('driver-name').textContent = res.user.name;
+                loadDriverData();
+                if (pollDriver) clearInterval(pollDriver);
+                pollDriver = setInterval(loadDriverData, 5000);
+            }
+        } else {
+            notify('error','Error', res.message);
+        }
+    })
+    .catch(function(){ notify('error','Error','No se pudo conectar al servidor'); });
+}
+
+function logout() {
+    currentUser = null;
+    if (pollDriver) {clearInterval(pollDriver); pollDriver=null;}
+    if (pollCustomer) {clearInterval(pollCustomer); pollCustomer=null;}
+    document.getElementById('driver-screen').classList.remove('active');
+    document.getElementById('customer-screen').classList.remove('active');
+    document.getElementById('auth-screen').classList.add('active');
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+}
+
+// === CUSTOMER ===
+function getAutoLocation() {
+    return new Promise(function(resolve){
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(function(pos){
+            resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        }, function(){
+            resolve(null);
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+    });
+}
+
+function createOrder(e) {
+    e.preventDefault();
+    var tip = document.getElementById('order-tip-check').checked ? parseFloat(document.getElementById('order-tip').value) || 0 : 0;
+    var btn = document.getElementById('create-order-btn');
+    var status = document.getElementById('loc-status');
+    btn.disabled = true;
+    status.textContent = '⏳ Detectando tu ubicación automáticamente...';
+    getAutoLocation().then(function(loc){
+        if (!loc) {
+            btn.disabled = false;
+            status.textContent = '❌ No se pudo detectar tu ubicación. Asegúrate de permitir el acceso a la ubicación.';
+            return;
+        }
+        custLocation = loc;
+        status.textContent = '✅ Ubicación detectada: ' + loc.lat.toFixed(5) + ', ' + loc.lng.toFixed(5);
+        var data = {customerId:currentUser.id, customerName:currentUser.name, customerPhone:currentUser.phone, customerEmail:currentUser.email, address:'Ubicación automática', reference:'', description:document.getElementById('order-description').value, tip:tip, customerLocation:loc};
+        fetch('/api/orders', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+        .then(function(r){return r.json()})
+        .then(function(res){
+            btn.disabled = false;
+            if (res.success) {
+                notify('success','¡Pedido creado!','Tu código de seguridad: '+res.order.securityCode+'\nGuárdalo para la entrega');
+                document.querySelector('#customer-screen form').reset();
+                status.textContent = 'Tu ubicación se detecta automáticamente al enviar el pedido';
+                custLocation = null;
+                loadCustOrders();
+            } else { notify('error','Error',res.message); }
+        })
+        .catch(function(){ btn.disabled=false; notify('error','Error','No se pudo crear el pedido'); });
+    });
+}
+
+function loadCustOrders() {
+    if (!currentUser || currentUser.role !== 'customer') return;
+    fetch('/api/orders?customerId='+currentUser.id)
+    .then(function(r){return r.json()})
+    .then(function(data){
+        var orders = data.orders || [];
+        var c = document.getElementById('customer-orders');
+        if (!orders.length) { c.innerHTML='<p class="no-orders">No tienes pedidos aún</p>'; return; }
+
+        // Notificar al cliente cuando el pedido SALIÓ del restaurante (una sola vez)
+        orders.forEach(function(o){
+            if (o.status === 'assigned' && o.out && !knownOrderIds[o.id + '-out']) {
+                knownOrderIds[o.id + '-out'] = true;
+                notifySound();
+                notify('success','🛵 ¡Tu pedido va en camino!','El repartidor '+ (o.driverName||'') +' salió del restaurante. Ya puedes ver su ubicación en tiempo real.');
+            }
+        });
+
+        var st = {pending:'Pendiente',assigned:'Asignado',delivered:'Entregado'};
+        c.innerHTML = orders.map(function(o){
+            var trackBtn = '';
+            if (o.status === 'assigned' && o.out) {
+                trackBtn = '<button class="btn-track" onclick="openTrack(\''+o.id+'\')">📍 Ver ubicación en tiempo real</button>';
+            } else if (o.status === 'assigned') {
+                trackBtn = '<button class="btn-track" onclick="openTrack(\''+o.id+'\')">📍 Seguir Pedido</button>';
+            } else if (o.status === 'delivered') {
+                trackBtn = '<button class="btn-track" onclick="openTrack(\''+o.id+'\')">📍 Seguir Pedido</button>';
+            } else {
+                trackBtn = '<button class="btn-track" onclick="openTrack(\''+o.id+'\')">📍 Seguir Pedido</button>';
+            }
+            var outMsg = (o.status === 'assigned' && !o.out) ? '<p style="color:#64748b;">⏳ El repartidor está preparando tu pedido en el restaurante...</p>' : '';
+            return '<div class="order-card '+o.status+'"><div class="order-header"><span class="order-id">'+o.id+'</span><span class="order-status '+o.status+'">'+(st[o.status]||o.status)+'</span></div><div class="order-info"><p><strong>Dirección:</strong> '+displayAddress(o)+'</p><p><strong>Pedido:</strong> '+o.description+'</p>'+(o.addTip?'<p><strong>Propina:</strong> $'+o.tip.toFixed(2)+'</p>':'')+(o.confirmedAmount?'<p><strong>Monto cobrado:</strong> $'+o.confirmedAmount.toFixed(2)+'</p>':'')+(o.driverName?'<p><strong>Repartidor:</strong> '+o.driverName+'</p>':'')+(o.securityCode?'<p><strong>Código:</strong> '+o.securityCode+'</p>':'')+outMsg+'</div><div class="order-actions">'+trackBtn+'</div></div>';
+        }).join('');
+    }).catch(function(){});
+}
+
+// === DRIVER ===
+function loadDriverData() {
+    if (!currentUser || currentUser.role !== 'driver') return;
+    loadAvailOrders();
+    loadMyDeliveries();
+    loadStats();
+}
+
+function loadAvailOrders() {
+    fetch('/api/orders?status=pending')
+    .then(function(r){return r.json()})
+    .then(function(data){
+        var orders = data.orders || [];
+        var c = document.getElementById('available-orders');
+        if (!orders.length) { c.innerHTML='<p class="no-orders">No hay pedidos disponibles</p>'; return; }
+
+        // Notificar al repartidor cuando llega un pedido nuevo (una sola vez por pedido)
+        orders.forEach(function(o){
+            if (!knownOrderIds['new-'+o.id]) {
+                knownOrderIds['new-'+o.id] = true;
+                notifySound();
+                notify('info','🛎️ Nuevo pedido disponible','Pedido '+o.id+' de '+o.customerName+'. Presiona Aceptar.');
+            }
+        });
+
+        c.innerHTML = orders.map(function(o){
+            return '<div class="order-card pending"><div class="order-header"><span class="order-id">'+o.id+'</span><span class="order-status pending">Pendiente</span></div><div class="order-info"><p><strong>Cliente:</strong> '+o.customerName+'</p><p><strong>Teléfono:</strong> '+o.customerPhone+'</p><p><strong>Ubicación:</strong> '+displayAddress(o)+'</p><p><strong>Pedido:</strong> '+o.description+'</p>'+(o.addTip?'<p>💚 <strong>Cliente agregó propina.</strong></p>':'')+'</div><div class="order-actions"><button class="btn-accept" onclick="acceptOrder(\''+o.id+'\')">Aceptar Pedido</button></div></div>';
+        }).join('');
+    }).catch(function(){});
+}
+
+function loadMyDeliveries() {
+    fetch('/api/orders?driverId='+currentUser.id+'&status=assigned')
+    .then(function(r){return r.json()})
+    .then(function(data){
+        var orders = data.orders || [];
+        var c = document.getElementById('my-deliveries');
+        if (!orders.length) { c.innerHTML='<p class="no-orders">No tienes entregas activas</p>'; return; }
+        c.innerHTML = orders.map(function(o){
+            // Ubicación del cliente (visible para el repartidor desde que acepta) - botón para ver en mapa
+            var clientLocBtn = '';
+            if (o.customerLocation && o.customerLocation.lat) {
+                var mapUrl = 'https://maps.google.com/maps?q='+o.customerLocation.lat+','+o.customerLocation.lng+'&z=17&output=embed';
+                clientLocBtn = '<button class="btn-track" onclick="window.open(\'https://maps.google.com/maps?q='+o.customerLocation.lat+','+o.customerLocation.lng+'&z=17\')">📍 Ubicación del cliente</button>';
+            } else {
+                clientLocBtn = '<button class="btn-track" onclick="window.open(\'https://maps.google.com/maps?q='+encodeURIComponent(o.address)+'&z=17\')">📍 Ver dirección en mapa</button>';
+            }
+            // Botón salir con el pedido
+            var outBtn = o.out
+                ? '<button class="btn-accept" style="background:#22c55e;" disabled>✅ Ya salí con el pedido</button>'
+                : '<button class="btn-accept" onclick="leaveOrder(\''+o.id+'\')">🛵 Salí con el pedido</button>';
+            var outNote = o.out ? '<p style="color:#64748b;">✅ El cliente ya puede ver tu ubicación en tiempo real.</p>' : '<p style="color:#f59e0b;">⏳ Presiona "Salí con el pedido" para que el cliente vea tu ubicación.</p>';
+            return '<div class="order-card assigned"><div class="order-header"><span class="order-id">'+o.id+'</span><span class="order-status assigned">En camino</span></div><div class="order-info"><p><strong>Cliente:</strong> '+o.customerName+'</p><p><strong>Teléfono:</strong> '+o.customerPhone+'</p><p><strong>Ubicación:</strong> '+displayAddress(o)+'</p><p><strong>Pedido:</strong> '+o.description+'</p>'+(o.addTip?'<p>💚 <strong>Cliente agregó propina de $'+o.tip.toFixed(2)+'</strong></p>':'')+outNote+'</div><div class="order-actions"><button class="btn-deliver" onclick="openDelivery(\''+o.id+'\')">Confirmar Entrega</button>'+outBtn+clientLocBtn+'<button class="btn-accept" onclick="sendGPS(\''+o.id+'\')">📡 GPS</button><button class="btn-track" onclick="window.open(\'tel:'+o.customerPhone+'\')">📞 Llamar</button></div></div>';
+        }).join('');
+    }).catch(function(){});
+}
+
+// Repartidor salió con el pedido
+function leaveOrder(id) {
+    fetch('/api/orders/'+id+'/out', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({driverId:currentUser.id})})
+    .then(function(r){return r.json()})
+    .then(function(res){
+        if(res.success){
+            notify('success','🛵 Pedido en camino','El cliente ha sido notificado y ya puede seguir tu ubicación.');
+            sendGPS(id);
+            loadDriverData();
+        } else { notify('error','Error',res.message); }
+    })
+    .catch(function(){ notify('error','Error','No se pudo actualizar'); });
+}
+
+function loadStats() {
+    fetch('/api/orders?driverId='+currentUser.id)
+    .then(function(r){return r.json()})
+    .then(function(data){
+        var orders = data.orders||[];
+        document.getElementById('pending-count').textContent = orders.filter(function(o){return o.status==='assigned'}).length;
+        document.getElementById('delivered-count').textContent = orders.filter(function(o){return o.status==='delivered'}).length;
+        document.getElementById('earnings').textContent = '$'+orders.filter(function(o){return o.status==='delivered'}).reduce(function(s,o){return s+(o.confirmedAmount||0)},0).toFixed(2);
+    }).catch(function(){});
+}
+
+function acceptOrder(id) {
+    fetch('/api/orders/'+id+'/assign', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({driverId:currentUser.id, driverName:currentUser.name})})
+    .then(function(r){return r.json()})
+    .then(function(res){ if(res.success){ notify('success','Pedido Aceptado','Dirígete a la ubicación del cliente'); loadDriverData(); } else { notify('error','Error',res.message); } })
+    .catch(function(){ notify('error','Error','No se pudo aceptar'); });
+}
+
+function sendGPS(id) {
+    if (!navigator.geolocation) { notify('error','Error','Tu dispositivo no tiene GPS'); return; }
+    notify('info','📡 GPS activo','Enviando tu ubicación...');
+    navigator.geolocation.watchPosition(function(pos){
+        fetch('/api/orders/'+id+'/location', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({lat:pos.coords.latitude, lng:pos.coords.longitude})})
+        .then(function(r){return r.json()}).then(function(){}).catch(function(){});
+    }, function(){}, {enableHighAccuracy:true, timeout:10000, maximumAge:5000});
+}
+
+// === DELIVERY ===
+function openClientMap() {
+    if (currentOrder && currentOrder.customerLocation && currentOrder.customerLocation.lat) {
+        window.open('https://maps.google.com/maps?q='+currentOrder.customerLocation.lat+','+currentOrder.customerLocation.lng+'&z=17');
+    } else if (currentOrder && currentOrder.address) {
+        window.open('https://maps.google.com/maps?q='+encodeURIComponent(currentOrder.address)+'&z=17');
+    }
+}
+
+function openDelivery(id) {
+    fetch('/api/orders/'+id).then(function(r){return r.json()}).then(function(data){
+        currentOrder = data.order;
+        document.getElementById('m-name').textContent = currentOrder.customerName;
+        document.getElementById('m-phone').textContent = currentOrder.customerPhone;
+        document.getElementById('m-address').textContent = (currentOrder.customerLocation && currentOrder.customerLocation.lat) ? 'Ubicación GPS' : (currentOrder.address||'Sin dirección');
+        document.getElementById('m-desc').textContent = currentOrder.description;
+        document.getElementById('delivery-amount').value = currentOrder.tip ? currentOrder.tip : '';
+        document.getElementById('security-code').value = '';
+        document.querySelector('input[name="payment-method"][value="cash"]').checked = true;
+        document.getElementById('card-info-msg').style.display = 'none';
+        document.getElementById('delivery-modal').classList.add('active');
+    }).catch(function(){ notify('error','Error','No se pudo cargar'); });
+}
+
+function toggleCardInfo() {
+    document.getElementById('card-info-msg').style.display = document.querySelector('input[name="payment-method"]:checked').value==='card'?'block':'none';
+}
+
+function confirmDelivery() {
+    var code = document.getElementById('security-code').value;
+    var pay = document.querySelector('input[name="payment-method"]:checked').value;
+    var amount = document.getElementById('delivery-amount').value;
+    if (!code || code.length!==6) { notify('error','Error','Ingresa código de 6 dígitos'); return; }
+    if (code !== currentOrder.securityCode) { notify('error','Código incorrecto','Solicita el código al cliente'); return; }
+    if (!amount || isNaN(parseFloat(amount))) { notify('error','Error','Indica el monto a cobrar'); return; }
+    if (pay==='card') { closeModal('delivery-modal'); notify('info','Pago con Tarjeta','📞 Comunícate al: 6182716305'); return; }
+    fetch('/api/orders/'+currentOrder.id+'/deliver-cash', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({securityCode:code, amount:parseFloat(amount)})})
+    .then(function(r){return r.json()})
+    .then(function(res){ if(res.success){ closeModal('delivery-modal'); notify('success','¡Entrega confirmada!','Pago: Efectivo | Monto: $'+parseFloat(amount).toFixed(2)+(currentOrder.addTip?' | Propina: $'+currentOrder.tip.toFixed(2):'')); loadDriverData(); } else { notify('error','Error',res.message); } })
+    .catch(function(){ notify('error','Error','No se pudo confirmar'); });
+}
+
+// === TRACKING ===
+function openTrack(id) {
+    trackingOrder = id;
+    document.getElementById('track-modal').classList.add('active');
+    refreshTrack();
+    if (pollTrack) clearInterval(pollTrack);
+    pollTrack = setInterval(refreshTrack, 3000);
+}
+
+function closeTrack() {
+    document.getElementById('track-modal').classList.remove('active');
+    if (pollTrack) { clearInterval(pollTrack); pollTrack=null; }
+    trackingOrder = null;
+}
+
+function refreshTrack() {
+    if (!trackingOrder) return;
+    fetch('/api/orders/'+trackingOrder).then(function(r){return r.json()}).then(function(data){
+        var o = data.order;
+        var names = {pending:'Pendiente',assigned:'Asignado',delivered:'Entregado'};
+        var badge = document.getElementById('track-badge');
+        badge.textContent = names[o.status]||o.status;
+        badge.className = 'track-badge '+(o.status==='assigned'?'assigned':o.status==='delivered'?'delivered':'pending');
+        var steps = ['pending','assigned','delivered'];
+        var ci = steps.indexOf(o.status)>=0?steps.indexOf(o.status):0;
+        document.getElementById('ts1').className = 'track-step'+(0<=ci?' done':'');
+        document.getElementById('ts2').className = 'track-step'+(1<=ci?' done':'')+(1===ci?' active':'');
+        document.getElementById('ts3').className = 'track-step'+(2<=ci?' done':'')+(2===ci?' active':'');
+        document.getElementById('ts4').className = 'track-step'+(3<=ci?' done':'')+(3===ci?' active':'');
+        document.getElementById('tc1').className = 'track-connector'+(1<=ci?' done':'');
+        document.getElementById('tc2').className = 'track-connector'+(2<=ci?' done':'');
+        document.getElementById('tc3').className = 'track-connector'+(3<=ci?' done':'');
+        document.getElementById('t-driver').textContent = o.driverName||'Buscando...';
+        document.getElementById('t-phone').textContent = o.customerPhone||'-';
+        var src;
+        // Mapa del punto de entrega (las coordenadas del cliente si están, si no la dirección)
+        var destMap = (o.customerLocation && o.customerLocation.lat)
+            ? 'https://maps.google.com/maps?q='+o.customerLocation.lat+','+o.customerLocation.lng+'&z=16&output=embed'
+            : 'https://maps.google.com/maps?q='+encodeURIComponent(o.address||'')+'&z=16&output=embed';
+        // El cliente SOLO ve la ubicación del repartidor si el repartidor ya salió con el pedido (out=true)
+        if (o.out && o.driverLocation && o.driverLocation.lat) {
+            src = 'https://maps.google.com/maps?q='+o.driverLocation.lat+','+o.driverLocation.lng+'&z=16&output=embed';
+            document.getElementById('t-info').textContent = 'El repartidor está en camino 🚚';
+        } else if (o.out) {
+            src = destMap;
+            document.getElementById('t-info').textContent = o.status==='delivered'?'¡Pedido entregado! ✅':'😊 ¡Tu pedido ya salió! Esperando ubicación del repartidor...';
+        } else {
+            // No ha salido aún - NO se revela la ubicación del repartidor
+            src = destMap;
+            document.getElementById('t-info').textContent = '⏳ El repartidor está preparando tu pedido en el restaurante. Cuando salga, podrás ver su ubicación en tiempo real.';
+        }
+        document.getElementById('t-map').src = src;
+        if (o.status==='delivered' && pollTrack) { clearInterval(pollTrack); pollTrack=null; }
+    }).catch(function(){});
+}
+
+// === INIT ===
+(function(){
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem('currentUser')); } catch(e){}
+    if (saved && saved.role && saved.email) {
+        fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:saved.email, password:saved.password})})
+        .then(function(r){return r.json()})
+        .then(function(res){
+            if (res.success) {
+                currentUser = res.user;
+                document.getElementById('auth-screen').classList.remove('active');
+                if (res.user.role==='customer') {
+                    document.getElementById('customer-screen').classList.add('active');
+                    document.getElementById('customer-name').textContent=res.user.name;
+                    loadCustOrders();
+                    pollCustomer=setInterval(loadCustOrders,5000);
+                } else {
+                    document.getElementById('driver-screen').classList.add('active');
+                    document.getElementById('driver-name').textContent=res.user.name;
+                    loadDriverData();
+                    pollDriver=setInterval(loadDriverData,5000);
+                }
+            } else { localStorage.removeItem('currentUser'); }
+        }).catch(function(){ localStorage.removeItem('currentUser'); });
+    }
+})();
+
+function saveSession() { if(currentUser) localStorage.setItem('currentUser', JSON.stringify({email:currentUser.email, password:currentUser.password, role:currentUser.role})); }
+
+var origDoLogin = doLogin;
+doLogin = function(e) {
+    e.preventDefault();
+    var email = document.getElementById('login-email').value;
+    var password = document.getElementById('login-password').value;
+    fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:email, password:password})})
+    .then(function(r){return r.json()})
+    .then(function(res){
+        if (res.success) {
+            currentUser = res.user;
+            saveSession();
+            document.getElementById('auth-screen').classList.remove('active');
+            if (res.user.role === 'customer') {
+                document.getElementById('customer-screen').classList.add('active');
+                document.getElementById('customer-name').textContent = res.user.name;
+                loadCustOrders();
+                if (pollCustomer) clearInterval(pollCustomer);
+                pollCustomer = setInterval(loadCustOrders, 5000);
+            } else {
+                document.getElementById('driver-screen').classList.add('active');
+                document.getElementById('driver-name').textContent = res.user.name;
+                loadDriverData();
+                if (pollDriver) clearInterval(pollDriver);
+                pollDriver = setInterval(loadDriverData, 5000);
+            }
+        } else {
+            notify('error','Error', res.message);
+        }
+    })
+    .catch(function(){ notify('error','Error','No se pudo conectar al servidor'); });
+};
+</script>
+</body>
+</html>
