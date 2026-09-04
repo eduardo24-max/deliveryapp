@@ -23,13 +23,33 @@ app.use((req, res, next) => {
 });
 
 // Configurar Email
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.ADMIN_EMAIL,
-        pass: process.env.EMAIL_PASSWORD
-    }
-});
+// Si hay credenciales de Brevo, úsalo (ideal para la nube). Si no, usa Gmail (desarrollo local).
+const USE_BREVO = !!(process.env.BREVO_USER && process.env.BREVO_PASS);
+const transporter = USE_BREVO
+    ? nodemailer.createTransport({
+          host: 'smtp-relay.brevo.com',
+          port: 587,
+          secure: false,
+          auth: {
+              user: process.env.BREVO_USER,
+              pass: process.env.BREVO_PASS
+          }
+      })
+    : nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+              user: process.env.ADMIN_EMAIL,
+              pass: process.env.EMAIL_PASSWORD
+          }
+      });
+if (USE_BREVO) {
+    console.log('📧 Email configurado con BREVO');
+} else {
+    console.log('📧 Email configurado con GMAIL (solo recomienda para local)');
+}
+
+// Remitente de los emails. Con Brevo se usa la cuenta de login; con Gmail el ADMIN_EMAIL.
+const EMAIL_FROM = USE_BREVO ? process.env.BREVO_USER : process.env.ADMIN_EMAIL;
 
 // Almacenamiento persistente
 // En producción usa Supabase (nube). En local usa database.json como fallback.
@@ -104,7 +124,7 @@ let emailCodes = {}; // Códigos de verificación temporales
 // Función para enviar email de verificación
 async function sendVerificationEmail(user, code) {
     const mailOptions = {
-        from: process.env.ADMIN_EMAIL,
+        from: EMAIL_FROM,
         to: user.email,
         subject: '🔐 Código de verificación - DeliveryApp',
         html: `
@@ -138,7 +158,7 @@ async function sendVerificationEmail(user, code) {
 // Función para enviar email de notificación al admin (solo para repartidores)
 async function sendNewUserEmail(user) {
     const mailOptions = {
-        from: process.env.ADMIN_EMAIL,
+        from: EMAIL_FROM,
         to: adminEmail,
         subject: `🚚 Nuevo repartidor registrado - ${user.name}`,
         html: `
@@ -172,7 +192,7 @@ async function sendApprovalEmail(user, approved) {
     const color = approved ? '#22c55e' : '#ef4444';
     
     const mailOptions = {
-        from: process.env.ADMIN_EMAIL,
+        from: EMAIL_FROM,
         to: user.email,
         subject: `${status} tu cuenta en DeliveryApp`,
         html: `
@@ -209,6 +229,25 @@ app.get('/', (req, res) => {
 // Ruta del admin
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// Ruta del monitor (panel de monitoreo del negocio) - protegida con contraseña admin
+app.get('/monitor', (req, res) => {
+    // Autorización básica: solo quien sepa la contraseña del admin entra
+    const auth = req.headers.authorization;
+    if (!auth || auth.indexOf('Basic ') !== 0) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="Monitor"');
+        return res.status(401).json({ success: false, message: 'Acceso restringido' });
+    }
+    const buf = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+    const parts = buf.split(':');
+    const user = parts[0];
+    const pass = parts.slice(1).join(':');
+    if (user === (process.env.ADMIN_EMAIL || 'admin') && pass === process.env.ADMIN_PASSWORD) {
+        return res.sendFile(path.join(__dirname, 'monitor.html'));
+    }
+    res.setHeader('WWW-Authenticate', 'Basic realm="Monitor"');
+    return res.status(401).json({ success: false, message: 'Acceso restringido' });
 });
 
 // API: Registro de usuario (paso 1 - envía código de verificación)

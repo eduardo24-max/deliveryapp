@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Monitoreo - DeliveryApp</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;}
+.page{max-width:1100px;margin:0 auto;padding:16px;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:#1e293b;border-radius:12px;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.header h1{font-size:20px;display:flex;align-items:center;gap:8px;}
+.badges{display:flex;gap:8px;align-items:center;}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#22c55e;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.live{font-size:13px;background:#065f46;color:#6ee7b7;padding:5px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;}
+.last-update{font-size:12px;color:#94a3b8;}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+.kpi{background:#1e293b;border-radius:12px;padding:16px;text-align:center;}
+.kpi .num{font-size:28px;font-weight:700;}
+.kpi .lbl{font-size:12px;color:#94a3b8;margin-top:4px;}
+.kpi .mxn{font-size:15px;font-weight:700;color:#22d3ee;}
+.kpi.blue .num{color:#60a5fa}.kpi.green .num{color:#34d399}.kpi.orange .num{color:#fbbf24}.kpi.yellow .num{color:#f472b6}.kpi.purple .num{color:#a78bfa}
+.section-title{font-size:16px;margin:20px 0 10px;display:flex;align-items:center;gap:8px;font-weight:600;}
+.card{background:#1e293b;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid;}
+.card.pending{border-left-color:#f59e0b;}
+.card.assigned{border-left-color:#8b5cf6;}
+.card.delivered{border-left-color:#34d399;}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.card-id{font-weight:700;color:#93c5fd;}
+.status{padding:3px 9px;border-radius:12px;font-size:12px;font-weight:600;}
+.status.pending{background:#78350f;color:#fcd34d;}
+.status.assigned{background:#4c1d95;color:#ddd6fe;}
+.status.delivered{background:#064e3b;color:#6ee7b7;}
+.card-body{font-size:13px;color:#cbd5e1;display:grid;gap:4px;}
+.card-body b{color:#e2e8f0;}
+.card-body .prop{color:#fcd34d;margin-top:2px;}
+.actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.act{font-size:12px;padding:6px 12px;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:#334155;color:#e2e8f0;text-decoration:none;display:inline-block;}
+.act.green{background:#059669;color:white;}
+.act.blue{background:#2563eb;color:white;}
+.act.purple{background:#7c3aed;color:white;}
+.empty{background:#1e293b;border-radius:12px;padding:30px;text-align:center;color:#64748b;font-size:14px;}
+.msg{color:#cbd5e1;font-size:13px;text-align:center;margin:4px 0 10px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:700px){.grid2{grid-template-columns:1fr;}}
+.refresh-msg{text-align:center;color:#64748b;font-size:12px;margin-top:6px;}
+@media print{.kpi,{ } }
+</style>
+</head>
+<body>
+<div class="page">
+    <div class="header">
+        <h1>📊 Panel de Monitoreo</h1>
+        <div class="badges">
+            <span class="live"><span class="dot"></span> En vivo</span>
+            <span class="last-update" id="last-update">Actualizándose...</span>
+            <a class="act" href="/admin">👨‍💼 Admin</a>
+            <a class="act" href="/">App</a>
+        </div>
+    </div>
+    <p class="msg" id="auth-msg"></p>
+
+    <div class="kpis">
+        <div class="kpi yellow"><div class="num" id="k-total">0</div><div class="lbl">Pedidos totales</div></div>
+        <div class="kpi orange"><div class="num" id="k-active">0</div><div class="lbl">Activos / en camino</div></div>
+        <div class="kpi green"><div class="num" id="k-delivered">0</div><div class="lbl">Entregados</div></div>
+        <div class="kpi blue"><div class="num mxn" id="k-earnings">$0</div><div class="lbl">Ganancias cobradas</div></div>
+        <div class="kpi blue"><div class="num" id="k-clients">0</div><div class="lbl">Clientes</div></div>
+        <div class="kpi purple"><div class="num" id="k-drivers">0</div><div class="lbl">Repartidores</div></div>
+    </div>
+
+    <div class="grid2">
+        <div>
+            <div class="section-title">🔴 Pedidos activos / en camino <span id="badge-active"></span></div>
+            <div id="active-orders"><div class="empty">Sin pedidos activos</div></div>
+        </div>
+        <div>
+            <div class="section-title">🟢 Últimos entregados</div>
+            <div id="delivered-orders"><div class="empty">Aún no hay entregas</div></div>
+        </div>
+    </div>
+
+    <div class="section-title">🚚 Repartidores</div>
+    <div id="drivers-card"><div class="empty">Sin repartidores aún</div></div>
+
+    <div class="section-title">🛒 Últimos clientes registrados</div>
+    <div id="clients-card"><div class="empty">Sin clientes registrados</div></div>
+
+    <p class="refresh-msg" id="err-msg"></p>
+</div>
+
+<script>
+var errCount = 0;
+
+function formatMoney(n){ return '$' + (Number(n)||0).toFixed(2); }
+
+function statusLabel(s){
+    return {pending:'Pendiente', assigned:(s==='assigned'?'En camino':'Asignado'), delivered:'Entregado'}[s] || s;
+}
+function statusClass(s){ return s==='pending'?'pending':s==='assigned'?'assigned':'delivered'; }
+
+function orderTime(iso){
+    if(!iso) return '';
+    try{ return new Date(iso).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
+}
+
+function orderCard(o){
+    var extra = '';
+    if(o.addTip){ extra += '<div class="prop">💚 Propina: '+o.tip+'</div>'; }
+    if(o.confirmedAmount){ extra += '<div class="prop">💵 Cobró: '+formatMoney(o.confirmedAmount)+'</div>'; }
+    if(o.paymentMethod){ extra += '<div>💳 Método: '+(o.paymentMethod==='cash'?'Efectivo':'Tarjeta')+'</div>'; }
+    var acts = '';
+    if(o.status==='assigned' && o.customerLocation && o.customerLocation.lat){
+        acts += '<a class="act green" target="_blank" href="https://maps.google.com/maps?q='+o.customerLocation.lat+','+o.customerLocation.lng+'&z=17">📍 Cliente</a>';
+    }
+    if(o.status==='assigned' && o.driverLocation && o.driverLocation.lat){
+        acts += '<a class="act purple" target="_blank" href="https://maps.google.com/maps?q='+o.driverLocation.lat+','+o.driverLocation.lng+'&z=16">🚚 Repartidor</a>';
+    }
+    var outNote = o.out ? '<div style="color:#6ee7b7;">✅ Repartidor salió con el pedido</div>' : (o.status==='assigned' ? '<div style="color:#fcd34d;">⏳ En el restaurante (no ha salido)</div>' : '');
+    return '<div class="card '+statusClass(o.status)+'"><div class="card-head"><span class="card-id">'+o.id+'</span><span class="status '+statusClass(o.status)+'">'+statusLabel(o.status)+'</span></div>'+
+        '<div class="card-body">'+
+        '<div>👤 <b>'+o.customerName+'</b> · '+(o.customerPhone||'-')+'</div>'+
+        '<div>📝 '+(o.description||'-')+'</div>'+
+        '<div>🚚 Repartidor: <b>'+ (o.driverName||'Sin asignar') +'</b></div>'+
+        (o.address?'<div>📍 '+o.address+'</div>':'')+
+        outNote+extra+
+        '<div style="color:#64748b;margin-top:4px;">🕐 '+orderTime(o.createdAt)+'</div>'+
+        '</div><div class="actions">'+acts+'</div></div>';
+}
+
+function load(){
+    var now = new Date().toLocaleTimeString('es-MX');
+    document.getElementById('last-update').textContent = 'Actualizado: '+now;
+
+    Promise.all([
+        fetch('/api/users').then(r=>r.json()),
+        fetch('/api/orders').then(r=>r.json()),
+        fetch('/api/stats').then(r=>r.json())
+    ]).then(function(res){
+        errCount = 0;
+        document.getElementById('err-msg').textContent = '';
+        var users = res[0].users || [];
+        var orders = res[1].orders || [];
+        var stats = res[2].stats || {};
+
+        var clients = users.filter(u=>u.role==='customer');
+        var drivers = users.filter(u=>u.role==='driver');
+
+        document.getElementById('k-total').textContent = stats.totalOrders || orders.length;
+        document.getElementById('k-active').textContent = orders.filter(o=>o.status==='assigned').length;
+        document.getElementById('k-delivered').textContent = orders.filter(o=>o.status==='delivered').length;
+        document.getElementById('k-clients').textContent = clients.length;
+        document.getElementById('k-drivers').textContent = drivers.length;
+
+        var earning = orders.filter(o=>o.status==='delivered').reduce(function(s,o){return s+(Number(o.confirmedAmount)||0)},0);
+        document.getElementById('k-earnings').textContent = formatMoney(earning);
+
+        // Activos
+        var active = orders.filter(o=>o.status==='assigned');
+        document.getElementById('badge-active').textContent = active.length ? '('+active.length+')' : '';
+        document.getElementById('active-orders').innerHTML = active.length
+            ? active.slice().reverse().map(orderCard).join('')
+            : '<div class="empty">Sin pedidos activos</div>';
+
+        // Entregados (últimos 8)
+        var deliv = orders.filter(o=>o.status==='delivered').slice(-8).reverse();
+        document.getElementById('delivered-orders').innerHTML = deliv.length
+            ? deliv.map(orderCard).join('')
+            : '<div class="empty">Aún no hay entregas</div>';
+
+        // Repartidores
+        document.getElementById('drivers-card').innerHTML = drivers.length
+            ? drivers.filter(d=>d.approved).map(function(d){
+                var assigned = orders.filter(o=>o.driverId==d.id && o.status==='assigned').length;
+                var complete = orders.filter(o=>o.driverId==d.id && o.status==='delivered').length;
+                return '<div class="card assigned"><div class="card-body"><div>🚚 <b>'+d.name+'</b></div>'+
+                    '<div>📞 '+(d.phone||'-')+'</div>'+
+                    '<div>🛵 '+(d.vehicle||'')+'</div>'+
+                    '<div style="color:'+(assigned?'#fcd34d;':'#34d399;')+'">🔴 En camino: '+assigned+' · ✅ Entregados: '+complete+'</div>'+
+                    '</div></div>';
+            }).join('')
+            : '<div class="empty">Sin repartidores aún</div>';
+
+        // Clientes recientes
+        var recentClients = clients.slice(-6).reverse();
+        document.getElementById('clients-card').innerHTML = recentClients.length
+            ? recentClients.map(function(c){
+                return '<div class="card pending"><div class="card-body"><div>🛒 <b>'+c.name+'</b></div><div>📧 '+c.email+'</div><div>📞 '+(c.phone||'-')+'</div><div style="color:#64748b;">🕐 '+orderTime(c.createdAt)+'</div></div></div>';
+            }).join('')
+            : '<div class="empty">Sin clientes registrados</div>';
+
+    }).catch(function(e){
+        errCount++;
+        document.getElementById('err-msg').textContent = '⚠️ No se pudo conectar ('+errCount+'). Verifica que el servidor responda.';
+    });
+}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
