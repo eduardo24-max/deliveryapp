@@ -57,13 +57,14 @@ if (USE_BREVO) {
 
 // Remitente de los emails. Con Brevo se usa la cuenta de login; con Gmail el ADMIN_EMAIL.
 // Remitente de los emails.
-// 1) Resend: usa la dirección de prueba (no requiere dominio verificado)
-// 2) Brevo: usa la cuenta de login
-// 3) Gmail: usa el ADMIN_EMAIL
-const USE_RESEND = !!(process.env.RESEND_API_KEY);
-const EMAIL_FROM = USE_RESEND
-    ? 'DeliveryApp <onboarding@resend.dev>'
-    : (USE_BREVO ? process.env.BREVO_USER : process.env.ADMIN_EMAIL);
+// 1) API Brevo: usa el ADMIN_EMAIL (correo real del negocio, verificado como remitente)
+// 2) Resend: usa la dirección de prueba (no requiere dominio verificado)
+// 3) SMTP: Brevo usa login, Gmail usa ADMIN_EMAIL
+const EMAIL_FROM = (process.env.BREVO_API_KEY)
+    ? process.env.ADMIN_EMAIL
+    : (process.env.RESEND_API_KEY
+        ? 'DeliveryApp <onboarding@resend.dev>'
+        : (USE_BREVO ? process.env.BREVO_USER : process.env.ADMIN_EMAIL));
 
 // Almacenamiento persistente
 // En producción usa Supabase (nube). En local usa database.json como fallback.
@@ -137,42 +138,58 @@ let emailCodes = {}; // Códigos de verificación temporales
 
 // ============================================================
 // Envío de emails central
-// 1) RESEND_API_KEY -> API de Resend (HTTPS, fiable desde Render)
-// 2) BREVO (SMTP)   -> con reintentos
-// 3) Gmail          -> respaldo local
+// 1) BREVO_API_KEY -> API REST de Brevo (HTTPS 443, fiable desde Render)
+// 2) RESEND_API_KEY -> API de Resend (HTTPS 443)
+// 3) SMTP (Brevo/Gmail) -> con reintentos (funciona desde tu PC local)
 // ============================================================
+const BREVO_API_KEY = process.env.BREVO_API_KEY || null;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || null;
 
 async function sendEmail({ to, subject, html }) {
-    // Método 1: API Resend (HTTPS 443 - nunca sufre timeout de SMTP)
+    // Método 1: API REST de Brevo (HTTPS - evita timeout SMTP)
+    if (BREVO_API_KEY) {
+        try {
+            const payload = {
+                sender: { email: EMAIL_FROM, name: 'DeliveryApp' },
+                to: [{ email: to }],
+                subject,
+                htmlContent: html
+            };
+            const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'api-key': BREVO_API_KEY, 'Accept': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                console.log(`📧 Email enviado vía API Brevo a ${to}`);
+                return true;
+            }
+            console.error('API Brevo error:', res.status, await res.text());
+        } catch (e) {
+            console.error('API Brevo error de red:', e.message);
+        }
+    }
+
+    // Método 2: API Resend (HTTPS)
     if (RESEND_API_KEY) {
         try {
             const res = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + RESEND_API_KEY
-                },
-                body: JSON.stringify({
-                    from: EMAIL_FROM,
-                    to: [to],
-                    subject,
-                    html
-                })
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + RESEND_API_KEY },
+                body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject, html })
             });
             if (res.ok) {
                 const d = await res.json();
                 console.log(`📧 Email enviado vía Resend a ${to} (id ${d.id})`);
                 return true;
             }
-            const err = await res.text();
-            console.error('Resend error:', res.status, err);
+            console.error('Resend error:', res.status, await res.text());
         } catch (e) {
             console.error('Resend error de red:', e.message);
         }
     }
 
-    // Método 2: SMTP (Brevo/Gmail) con reintentos
+    // Método 3: SMTP (Brevo/Gmail) con reintentos
     let lastErr = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
