@@ -25,6 +25,12 @@ app.use((req, res, next) => {
 // Configurar Email
 // Si hay credenciales de Brevo, úsalo (ideal para la nube). Si no, usa Gmail (desarrollo local).
 const USE_BREVO = !!(process.env.BREVO_USER && process.env.BREVO_PASS);
+// Timeouts generosos para evitar "Connection timeout" con Brevo
+const SMTP_TIMEOUTS = {
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000
+};
 const transporter = USE_BREVO
     ? nodemailer.createTransport({
           host: 'smtp-relay.brevo.com',
@@ -33,7 +39,8 @@ const transporter = USE_BREVO
           auth: {
               user: process.env.BREVO_USER,
               pass: process.env.BREVO_PASS
-          }
+          },
+          ...SMTP_TIMEOUTS
       })
     : nodemailer.createTransport({
           service: 'gmail',
@@ -121,104 +128,94 @@ let orders = [];
 let adminEmail = process.env.ADMIN_EMAIL;
 let emailCodes = {}; // Códigos de verificación temporales
 
+// ============================================================
+// Envío de emails central (usando SMTP con reintentos)
+// ============================================================
+async function sendEmail({ to, subject, html }) {
+    let lastErr = null;
+    // Varios intentos para tolerar timeouts intermitentes de la red
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
+            console.log(`📧 Email enviado a ${to} (intento ${attempt})`);
+            return true;
+        } catch (error) {
+            lastErr = error;
+            console.error(`Intento ${attempt} de email falló:`, error.message);
+            if (attempt < 3) await new Promise(r => setTimeout(r, 3000));
+        }
+    }
+    console.error('Email no se pudo enviar tras 3 intentos:', lastErr && lastErr.message);
+    return false;
+}
+
 // Función para enviar email de verificación
 async function sendVerificationEmail(user, code) {
-    const mailOptions = {
-        from: EMAIL_FROM,
-        to: user.email,
-        subject: '🔐 Código de verificación - DeliveryApp',
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563eb;">Verifica tu correo</h2>
-                <div style="background: #f8fafc; padding: 20px; border-radius: 10px; text-align: center;">
-                    <p style="font-size: 16px;">Hola ${user.name},</p>
-                    <p style="font-size: 16px;">Tu código de verificación es:</p>
-                    <div style="background: #2563eb; color: white; padding: 16px 24px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; display: inline-block; margin: 10px 0;">
-                        ${code}
-                    </div>
-                    <p style="color: #64748b; font-size: 14px;">Ingresa este código en la aplicación para activar tu cuenta.</p>
-                    <p style="color: #64748b; font-size: 12px;">El código expira en 10 minutos.</p>
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Verifica tu correo</h2>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 10px; text-align: center;">
+                <p style="font-size: 16px;">Hola ${user.name},</p>
+                <p style="font-size: 16px;">Tu código de verificación es:</p>
+                <div style="background: #2563eb; color: white; padding: 16px 24px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 8px; display: inline-block; margin: 10px 0;">
+                    ${code}
                 </div>
-                <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
-                    DeliveryApp - Sistema de Delivery
-                </p>
+                <p style="color: #64748b; font-size: 14px;">Ingresa este código en la aplicación para activar tu cuenta.</p>
+                <p style="color: #64748b; font-size: 12px;">El código expira en 10 minutos.</p>
             </div>
-        `
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        return true;
-    } catch (error) {
-        console.error('Error enviando email de verificación:', error);
-        return false;
-    }
+            <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
+                DeliveryApp - Sistema de Delivery
+            </p>
+        </div>
+    `;
+    const ok = await sendEmail({ to: user.email, subject: '🔐 Código de verificación - DeliveryApp', html });
+    if (!ok) console.error('Fallo al enviar código de verificación');
+    return ok;
 }
 
 // Función para enviar email de notificación al admin (solo para repartidores)
 async function sendNewUserEmail(user) {
-    const mailOptions = {
-        from: EMAIL_FROM,
-        to: adminEmail,
-        subject: `🚚 Nuevo repartidor registrado - ${user.name}`,
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563eb;">Nuevo repartidor registrado</h2>
-                <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
-                    <p><strong>Nombre:</strong> ${user.name}</p>
-                    <p><strong>Email:</strong> ${user.email}</p>
-                    <p><strong>Teléfono:</strong> ${user.phone}</p>
-                    <p><strong>Vehículo:</strong> ${user.vehicle || '-'}</p>
-                    <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-MX')}</p>
-                </div>
-                <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
-                    Revisa el panel de administración para aprobar a este repartidor.
-                </p>
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Nuevo repartidor registrado</h2>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
+                <p><strong>Nombre:</strong> ${user.name}</p>
+                <p><strong>Email:</strong> ${user.email}</p>
+                <p><strong>Teléfono:</strong> ${user.phone}</p>
+                <p><strong>Vehículo:</strong> ${user.vehicle || '-'}</p>
+                <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-MX')}</p>
             </div>
-        `
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        console.log('Email de notificación al admin enviado');
-    } catch (error) {
-        console.error('Error enviando email al admin:', error);
-    }
+            <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
+                Revisa el panel de administración para aprobar a este repartidor.
+            </p>
+        </div>
+    `;
+    const ok = await sendEmail({ to: adminEmail, subject: `🚚 Nuevo repartidor registrado - ${user.name}`, html });
+    if (!ok) console.error('Fallo al notificar al admin por email');
 }
 
 // Función para enviar email de aprobación
 async function sendApprovalEmail(user, approved) {
     const status = approved ? 'Aprobada' : 'Rechazada';
     const color = approved ? '#22c55e' : '#ef4444';
-    
-    const mailOptions = {
-        from: EMAIL_FROM,
-        to: user.email,
-        subject: `${status} tu cuenta en DeliveryApp`,
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: ${color};">Tu cuenta ha sido ${status}</h2>
-                <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
-                    <p>Hola ${user.name},</p>
-                    <p>Tu cuenta como <strong>${user.role === 'driver' ? 'Repartidor' : 'Cliente'}</strong> ha sido ${status.toLowerCase()}.</p>
-                    ${approved ? 
-                        '<p style="color: #22c55e; font-weight: bold;">Ya puedes iniciar sesión y usar la plataforma.</p>' :
-                        '<p style="color: #ef4444;">Si tienes alguna consulta, contacta al administrador.</p>'
-                    }
-                </div>
-                <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
-                    DeliveryApp - Sistema de Delivery
-                </p>
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: ${color};">Tu cuenta ha sido ${status}</h2>
+            <div style="background: #f8fafc; padding: 20px; border-radius: 10px;">
+                <p>Hola ${user.name},</p>
+                <p>Tu cuenta como <strong>${user.role === 'driver' ? 'Repartidor' : 'Cliente'}</strong> ha sido ${status.toLowerCase()}.</p>
+                ${approved ? 
+                    '<p style="color: #22c55e; font-weight: bold;">Ya puedes iniciar sesión y usar la plataforma.</p>' :
+                    '<p style="color: #ef4444;">Si tienes alguna consulta, contacta al administrador.</p>'
+                }
             </div>
-        `
-    };
-
-    try {
-        await transporter.sendMail(mailOptions);
-        console.log(`Email de ${status.toLowerCase()} enviado a ${user.email}`);
-    } catch (error) {
-        console.error('Error enviando email:', error);
-    }
+            <p style="margin-top: 20px; color: #64748b; font-size: 12px;">
+                DeliveryApp - Sistema de Delivery
+            </p>
+        </div>
+    `;
+    const ok = await sendEmail({ to: user.email, subject: `${status} tu cuenta en DeliveryApp`, html });
+    if (!ok) console.error('Fallo al enviar email de aprobación');
 }
 
 // Ruta principal - servir el frontend
