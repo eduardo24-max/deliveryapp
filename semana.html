@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semana Académica · Registro</title>
+<style>
+    :root {
+        --bg: #f1f5f9;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --primary: #7c3aed;
+        --primary-dark: #6d28d9;
+        --green: #16a34a;
+        --green-bg: #f0fdf4;
+        --green-border: #bbf7d0;
+        --red: #dc2626;
+        --red-bg: #fef2f2;
+        --red-border: #fecaca;
+        --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+        --shadow-lg: 0 10px 25px rgba(0,0,0,.1);
+        --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+    }
+    .hidden { display: none !important; }
+    button { font-family: inherit; cursor: pointer; border: none; border-radius: 10px; }
+    input, select, textarea {
+        font-family: inherit; font-size: 15px;
+        width: 100%; padding: 10px 12px;
+        border: 1px solid var(--border); border-radius: 10px;
+        background: #fff; color: var(--text); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
+    label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+
+    /* ---------- LOGIN ---------- */
+    #login {
+        min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .login-card {
+        background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+        width: 100%; max-width: 380px; padding: 36px 28px; text-align: center;
+    }
+    .login-card .logo {
+        font-size: 42px; margin-bottom: 8px;
+    }
+    .login-card h1 { font-size: 22px; margin-bottom: 4px; }
+    .login-card p { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+    .login-card .btn { width: 100%; margin-top: 12px; }
+    .login-err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 20px; }
+
+    /* ---------- LAYOUT ---------- */
+    header {
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff; padding: 18px 22px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+        position: sticky; top: 0; z-index: 20; box-shadow: var(--shadow);
+    }
+    header h1 { font-size: 19px; display: flex; align-items: center; gap: 8px; }
+    header .sub { font-size: 13px; opacity: .85; font-weight: 400; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-outline {
+        background: rgba(255,255,255,.15); color: #fff; padding: 7px 14px; font-size: 13px;
+        border: 1px solid rgba(255,255,255,.4);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.25); }
+
+    main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    /* ---------- CARDS RESUMEN ---------- */
+    .cards {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px;
+    }
+    .card {
+        background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+        padding: 18px 18px; border: 1px solid var(--border);
+    }
+    .card .label { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 700; }
+    .card .value { font-size: 26px; font-weight: 800; margin-top: 4px; }
+    .card .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+    .card.recaudado { border-color: var(--green-border); background: var(--green-bg); }
+    .card.recaudado .value { color: var(--green); }
+    .card.gastos { border-color: var(--red-border); background: var(--red-bg); }
+    .card.gastos .value { color: var(--red); }
+    .card.saldo { border-top: 4px solid var(--primary); }
+    .card.saldo .value { color: var(--primary); }
+
+    /* ---------- TABS ---------- */
+    .tabs { display: flex; gap: 8px; margin-bottom: 18px; background: var(--card); padding: 6px; border-radius: 12px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .tab {
+        flex: 1; padding: 10px; font-size: 14px; font-weight: 600; border-radius: 8px;
+        background: transparent; color: var(--muted);
+    }
+    .tab.active { background: var(--primary); color: #fff; }
+    .tab:not(.active):hover { background: #eee; }
+
+    /* ---------- FORMS ---------- */
+    .panel {
+        background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 18px; margin-bottom: 22px;
+    }
+    .panel h2 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+    .form-row.three { grid-template-columns: 1.4fr 1fr 1fr auto; }
+    @media (max-width: 640px) { .form-row, .form-row.three { grid-template-columns: 1fr; } }
+    .field { }
+    .btn {
+        background: var(--primary); color: #fff; padding: 11px 18px; font-size: 14px; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn.ghost:hover { background: #f1f5f9; color: var(--text); }
+    .btn.danger { background: transparent; color: var(--red); border: 1px solid var(--red-border); }
+    .btn.danger:hover { background: var(--red-bg); }
+    .btn.sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
+    .btn.block { width: 100%; justify-content: center; }
+
+    /* Foto del ticket */
+    .photo-field { grid-column: 1 / -1; }
+    .photo-upload {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        border: 2px dashed var(--border); border-radius: 10px; padding: 12px; background: #f8fafc;
+    }
+    .photo-upload.has-file { border-color: var(--green); background: var(--green-bg); }
+    .photo-upload img { width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    .photo-upload .info { font-size: 13px; color: var(--muted); flex: 1; }
+    .photo-upload .info strong { color: var(--text); display: block; }
+
+    /* ---------- LISTAS ---------- */
+    .list-title { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 10px; }
+    .list-title h2 { font-size: 16px; }
+    .list-title .count { font-size: 13px; color: var(--muted); background: #f1f5f9; padding: 3px 10px; border-radius: 999px; }
+
+    .student-card, .expense-card {
+        background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 12px;
+    }
+    .student-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .student-avatar {
+        width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg,#7c3aed,#a855f7);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 17px; flex-shrink: 0;
+    }
+    .student-info { flex: 1; min-width: 140px; }
+    .student-info .name { font-weight: 700; font-size: 15.5px; }
+    .student-info .group { font-size: 12.5px; color: var(--muted); }
+    .student-total { text-align: right; font-weight: 800; font-size: 16px; color: var(--green); min-width: 80px; }
+    .student-total .mini { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .student-actions { display: flex; gap: 6px; }
+
+    .payments {
+        margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px;
+    }
+    .payments-head { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .payment-row {
+        display: flex; align-items: center; gap: 10px; padding: 6px 0;
+        border-bottom: 1px dashed var(--border); font-size: 13.5px;
+    }
+    .payment-row:last-child { border-bottom: none; }
+    .payment-row .date { color: var(--muted); font-size: 12px; flex: 1; }
+    .payment-row .amt { font-weight: 700; }
+    .payment-row .note { color: var(--muted); font-size: 12px; }
+    .empty { text-align: center; color: var(--muted); padding: 30px 12px; font-size: 14px; }
+
+    /* Gasto */
+    .expense-top { display: flex; gap: 12px; align-items: flex-start; }
+    .expense-thumb {
+        width: 64px; height: 64px; flex-shrink: 0; border-radius: 10px;
+        background: #f1f5f9; border: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: center; font-size: 24px;
+        overflow: hidden; cursor: zoom-in;
+    }
+    .expense-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .expense-info { flex: 1; min-width: 0; }
+    .expense-info .desc { font-weight: 700; font-size: 15px; }
+    .expense-info .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .expense-amount { font-weight: 800; font-size: 16.5px; color: var(--red); white-space: nowrap; }
+    .expense-actions { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+
+    /* ---------- MODAL ---------- */
+    .modal {
+        position: fixed; inset: 0; background: rgba(15,23,42,.55);
+        display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 150;
+    }
+    .modal.hidden { display: none; }
+    .modal-box {
+        background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-lg);
+        width: 100%; max-width: 420px; padding: 22px;
+    }
+    .modal-box h3 { font-size: 17px; margin-bottom: 4px; }
+    .modal-box .subtitle { color: var(--muted); font-size: 13.5px; margin-bottom: 14px; }
+    .modal-box .field { margin-bottom: 12px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+    /* Lightbox */
+    #lightbox {
+        position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 100;
+        display: flex; align-items: center; justify-content: center; padding: 20px; cursor: zoom-out;
+    }
+    #lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: var(--shadow-lg); }
+
+    /* Toast */
+    #toast {
+        position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: #0f172a; color: #fff; padding: 12px 20px; border-radius: 10px;
+        font-size: 14px; opacity: 0; pointer-events: none; transition: all .25s ease; z-index: 200;
+        max-width: 90vw; text-align: center;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .spinner {
+        display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4);
+        border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login">
+    <div class="login-card">
+        <div class="logo">🎓</div>
+        <h1>Semana Académica</h1>
+        <p>Registro de alumnos, abonos y gastos</p>
+        <div>
+            <label for="login-pass">Contraseña</label>
+            <input type="password" id="login-pass" placeholder="Ingresa la contraseña" autocomplete="current-password">
+            <button class="btn block" id="btn-login">Entrar</button>
+            <div class="login-err" id="login-err"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+    <header>
+        <h1>🎓 Semana Académica <span class="sub">· Registro y control</span></h1>
+        <div class="header-actions">
+            <button class="btn-outline" id="btn-refresh">🔄 Actualizar</button>
+            <button class="btn-outline" id="btn-logout">Salir</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Resumen -->
+        <div class="cards">
+            <div class="card recaudado">
+                <div class="label">Recaudado</div>
+                <div class="value" id="lbl-recaudado">$0</div>
+                <div class="hint" id="lbl-count-pagos">0 abonos</div>
+            </div>
+            <div class="card gastos">
+                <div class="label">Gastos</div>
+                <div class="value" id="lbl-gastos">$0</div>
+                <div class="hint" id="lbl-count-gastos">0 gastos</div>
+            </div>
+            <div class="card saldo">
+                <div class="label">Saldo disponible</div>
+                <div class="value" id="lbl-saldo">$0</div>
+                <div class="hint" id="lbl-count-alumnos">0 alumnos</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="alumnos">👥 Alumnos</button>
+            <button class="tab" data-tab="gastos">🧾 Gastos</button>
+        </nav>
+
+        <!-- TAB ALUMNOS -->
+        <section id="tab-alumnos">
+            <div class="panel">
+                <h2>＋ Registrar alumno</h2>
+                <div class="form-row">
+                    <div class="field">
+                        <label>Nombre completo</label>
+                        <input type="text" id="stu-name" placeholder="Ej. Juan Pérez">
+                    </div>
+                    <div class="field">
+                        <label>Grupo / Carrera (opcional)</label>
+                        <input type="text" id="stu-group" placeholder="Ej. 5º A">
+                    </div>
+                    <button class="btn" id="btn-add-student">Agregar</button>
+                </div>
+            </div>
+
+            <div class="list-title"><h2>Alumnos</h2><span class="count" id="stu-count">0</span></div>
+            <div id="stu-list"></div>
+        </section>
+
+        <!-- TAB GASTOS -->
+        <section id="tab-gastos" class="hidden">
+            <div class="panel">
+                <h2>＋ Registrar gasto</h2>
+                <div class="form-row three">
+                    <div class="field">
+                        <label>Descripción</label>
+                        <input type="text" id="exp-desc" placeholder="Ej. Compra de material">
+                    </div>
+                    <div class="field">
+                        <label>Categoría</label>
+                        <select id="exp-cat">
+                            <option value="Material">Material</option>
+                            <option value="Comida">Comida</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Publicidad">Publicidad</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Monto (MXN)</label>
+                        <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01">
+                    </div>
+                    <button class="btn" id="btn-add-expense">Agregar</button>
+                </div>
+                <div class="field photo-field">
+                    <label>Foto del ticket (opcional)</label>
+                    <div class="photo-upload" id="photo-box">
+                        <img id="photo-preview" class="hidden" alt="Vista previa">
+                        <div class="info"><strong>Adjuntar ticket</strong>Haz clic para elegir o tomar la foto</div>
+                        <button class="btn ghost sm" id="btn-clear-photo" type="button">Quitar</button>
+                    </div>
+                    <input type="file" id="exp-photo" accept="image/*" class="hidden">
+                </div>
+            </div>
+
+            <div class="list-title"><h2>Gastos</h2><span class="count" id="exp-count">0</span></div>
+            <div id="exp-list"></div>
+        </section>
+    </main>
+</div>
+
+<!-- Modal abonar -->
+<div id="modal-pago" class="modal hidden">
+    <div class="modal-box">
+        <h3 id="pago-title">Abonar</h3>
+        <div class="subtitle" id="pago-sub"></div>
+        <div class="field">
+            <label>Monto (MXN)</label>
+            <input type="number" id="pago-amount" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+            <label>Nota (opcional)</label>
+            <input type="text" id="pago-note" placeholder="Ej. primer pago">
+        </div>
+        <div class="modal-actions">
+            <button class="btn ghost" id="btn-pago-cancel">Cancelar</button>
+            <button class="btn" id="btn-pago-ok">Registrar abono</button>
+        </div>
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="hidden"><img id="lightbox-img" src="" alt="Foto del ticket"></div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+    const TOKEN_KEY = 'semana_token';
+    const API = '/api/semana';
+
+    let data = { students: [], payments: [], expenses: [] };
+    let currentPagoStudent = null;
+    let photoData = null;
+
+    const $ = id => document.getElementById(id);
+    const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+
+    function setToken(t, remember) {
+        sessionStorage.setItem(TOKEN_KEY, t);
+        if (remember) localStorage.setItem(TOKEN_KEY, t);
+        else localStorage.removeItem(TOKEN_KEY);
+    }
+
+    async function api(path, opts = {}) {
+        opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+        const t = token();
+        if (t) opts.headers['x-semana-token'] = t;
+        const res = await fetch(API + path, opts);
+        let json = {};
+        try { json = await res.json(); } catch (e) {}
+        if (res.status === 401) { logout(); throw new Error('Sesión expirada'); }
+        if (!res.ok) throw new Error(json.message || 'Error del servidor');
+        return json;
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function money(n) {
+        return '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtDate(iso) {
+        return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', time: 'short' });
+    }
+
+    function toast(msg) {
+        const el = $('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    function initials(name) {
+        return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    }
+
+    // ---------- LOGIN ----------
+    async function doLogin() {
+        const pass = $('login-pass').value;
+        const err = $('login-err');
+        err.textContent = '';
+        try {
+            const res = await fetch(API + '/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pass })
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.message || 'Error');
+            setToken(json.token, false);
+            enterApp();
+        } catch (e) { err.textContent = e.message; }
+    }
+
+    function logout() {
+        sessionStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        $('app').classList.add('hidden');
+        $('login').classList.remove('hidden');
+    }
+
+    // ---------- CARGA / RENDER ----------
+    async function load() {
+        const res = await api('/data');
+        data = res.data;
+        renderTotals(res.totals);
+        renderStudents();
+        renderExpenses();
+    }
+
+    async function refresh() {
+        await load();
+        toast('Datos actualizados');
+    }
+
+    function renderTotals(t) {
+        $('lbl-recaudado').textContent = money(t.recaudado);
+        $('lbl-gastos').textContent = money(t.gastos);
+        $('lbl-saldo').textContent = money(t.saldo);
+        $('lbl-count-pagos').textContent = data.payments.length + ' abonos';
+        $('lbl-count-gastos').textContent = data.expenses.length + ' gastos';
+        $('lbl-count-alumnos').textContent = data.students.length + ' alumnos';
+        $('lbl-saldo').style.color = t.saldo < 0 ? 'var(--red)' : 'var(--primary)';
+    }
+
+    function studentTotal(id) {
+        return data.payments.filter(p => p.studentId === id).reduce((s, p) => s + p.amount, 0);
+    }
+
+    function renderStudents() {
+        const list = $('stu-list');
+        $('stu-count').textContent = data.students.length;
+        if (!data.students.length) {
+            list.innerHTML = '<div class="empty">Aún no hay alumnos registrados.<br>Agrega el primero arriba 👆</div>';
+            return;
+        }
+        list.innerHTML = data.students.map(s => {
+            const pays = data.payments.filter(p => p.studentId === s.id).sort((a, b) => b.id - a.id);
+            const total = pays.reduce((x, p) => x + p.amount, 0);
+            const rows = pays.length
+                ? pays.map(p => `
+                    <div class="payment-row">
+                        <span>${esc(fmtDate(p.date))}</span>
+                        <span class="note">${p.note ? esc(p.note) : ''}</span>
+                        <span class="amt">${money(p.amount)}</span>
+                        <button class="btn danger sm" data-del-pay="${p.id}" title="Eliminar abono">✕</button>
+                    </div>`).join('')
+                : '<div class="empty" style="padding: 10px;">Sin abonos todavía</div>';
+            return `
+                <div class="student-card">
+                    <div class="student-top">
+                        <div class="student-avatar">${esc(initials(s.name))}</div>
+                        <div class="student-info">
+                            <div class="name">${esc(s.name)}</div>
+                            <div class="group">${s.group ? esc(s.group) : 'Sin grupo'}</div>
+                        </div>
+                        <div class="student-total"><span class="mini">Abonado</span>${money(total)}</div>
+                        <div class="student-actions">
+                            <button class="btn sm" data-pay="${s.id}">+ Abonar</button>
+                            <button class="btn danger sm" data-del-stu="${s.id}" title="Eliminar alumno y sus abonos">🗑</button>
+                        </div>
+                    </div>
+                    <div class="payments">
+                        <div class="payments-head"><span>Abonos</span><span>${pays.length}</span></div>
+                        ${rows}
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function renderExpenses() {
+        const list = $('exp-list');
+        $('exp-count').textContent = data.expenses.length;
+        if (!data.expenses.length) {
+            list.innerHTML = '<div class="empty">Aún no hay gastos registrados.<br>Agrega el primero arriba 👆</div>';
+            return;
+        }
+        const sorted = [...data.expenses].sort((a, b) => b.id - a.id);
+        list.innerHTML = sorted.map(e => `
+            <div class="expense-card">
+                <div class="expense-top">
+                    <div class="expense-thumb" ${e.photo ? `data-photo="${e.id}"` : ''}>
+                        ${e.photo ? `<img src="${e.photo}" alt="Ticket">` : '🧾'}
+                    </div>
+                    <div class="expense-info">
+                        <div class="desc">${esc(e.description)}</div>
+                        <div class="meta">${esc(e.category)} · ${esc(fmtDate(e.date))}</div>
+                    </div>
+                    <div class="expense-amount">${money(e.amount)}</div>
+                    <div class="expense-actions">
+                        <button class="btn danger sm" data-del-exp="${e.id}" title="Eliminar gasto">🗑</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    // ---------- ALUMNOS ----------
+    async function addStudent() {
+        const name = $('stu-name').value.trim();
+        if (!name) { toast('Escribe el nombre del alumno'); return; }
+        const group = $('stu-group').value.trim();
+        try {
+            await api('/students', {
+                method: 'POST',
+                body: JSON.stringify({ name, group })
+            });
+            $('stu-name').value = '';
+            $('stu-group').value = '';
+            await load();
+            toast('Alumno registrado');
+        } catch (e) { toast(e.message); }
+    }
+
+    function openPago(id) {
+        const s = data.students.find(x => x.id === id);
+        if (!s) return;
+        currentPagoStudent = id;
+        $('pago-title').textContent = 'Abonar · ' + s.name;
+        $('pago-sub').textContent = 'Total hasta ahora: ' + money(studentTotal(id));
+        $('pago-amount').value = '';
+        $('pago-note').value = '';
+        $('modal-pago').classList.remove('hidden');
+        setTimeout(() => $('pago-amount').focus(), 50);
+    }
+
+    function closePago() {
+        $('modal-pago').classList.add('hidden');
+    }
+
+    async function doPago() {
+        const amount = parseFloat($('pago-amount').value);
+        if (isNaN(amount) || amount <= 0) { toast('Ingresa un monto válido'); return; }
+        const note = $('pago-note').value.trim();
+        try {
+            await api('/payments', {
+                method: 'POST',
+                body: JSON.stringify({ studentId: currentPagoStudent, amount, note })
+            });
+            closePago();
+            await load();
+            toast('Abono registrado');
+        } catch (e) { toast(e.message); }
+    }
+
+    async function delStudent(id) {
+        const s = data.students.find(x => x.id === id);
+        if (!confirm('¿Eliminar a "' + s.name + '" y todos sus abonos?')) return;
+        try {
+            await api('/students/' + id, { method: 'DELETE' });
+            await load();
+            toast('Alumno eliminado');
+        } catch (e) { toast(e.message); }
+    }
+
+    async function delPayment(id) {
+        if (!confirm('¿Eliminar este abono?')) return;
+        try {
+            await api('/payments/' + id, { method: 'DELETE' });
+            await load();
+            toast('Abono eliminado');
+        } catch (e) { toast(e.message); }
+    }
+
+    // ---------- GASTOS ----------
+    function handlePhoto(file) {
+        if (!file) return;
+        if (file.size > 8 * 1024 * 1024) { toast('La foto es muy grande (máx 8 MB)'); return; }
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            const img = new Image();
+            img.onload = function () {
+                const MAX = 900;
+                let { width, height } = img;
+                if (width > MAX) { height = height * MAX / width; width = MAX; }
+                const canvas = document.createElement('canvas');
+                canvas.width = width; canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                photoData = canvas.toDataURL('image/jpeg', 0.72);
+                $('photo-preview').src = photoData;
+                $('photo-preview').classList.remove('hidden');
+                $('photo-box').classList.add('has-file');
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearPhoto() {
+        photoData = null;
+        $('exp-photo').value = '';
+        $('photo-preview').src = '';
+        $('photo-preview').classList.add('hidden');
+        $('photo-box').classList.remove('has-file');
+    }
+
+    function openLightbox(id) {
+        const e = data.expenses.find(x => x.id === id);
+        if (!e || !e.photo) return;
+        $('lightbox-img').src = e.photo;
+        $('lightbox').classList.remove('hidden');
+    }
+
+    async function addExpense() {
+        const description = $('exp-desc').value.trim();
+        const amount = parseFloat($('exp-amount').value);
+        const category = $('exp-cat').value;
+        if (!description) { toast('Escribe la descripción del gasto'); return; }
+        if (isNaN(amount) || amount <= 0) { toast('Ingresa un monto válido'); return; }
+        try {
+            $('btn-add-expense').disabled = true;
+            $('btn-add-expense').innerHTML = '<span class="spinner"></span>';
+            await api('/expenses', {
+                method: 'POST',
+                body: JSON.stringify({ description, amount, category, photo: photoData })
+            });
+            $('exp-desc').value = '';
+            $('exp-amount').value = '';
+            clearPhoto();
+            await load();
+            toast('Gasto registrado');
+        } catch (e) { toast(e.message); }
+        finally {
+            $('btn-add-expense').disabled = false;
+            $('btn-add-expense').textContent = 'Agregar';
+        }
+    }
+
+    async function delExpense(id) {
+        if (!confirm('¿Eliminar este gasto?')) return;
+        try {
+            await api('/expenses/' + id, { method: 'DELETE' });
+            await load();
+            toast('Gasto eliminado');
+        } catch (e) { toast(e.message); }
+    }
+
+    // ---------- EVENTS ----------
+    function enterApp() {
+        $('login').classList.add('hidden');
+        $('app').classList.remove('hidden');
+        load().catch(e => toast(e.message));
+    }
+
+    $('btn-login').addEventListener('click', doLogin);
+    $('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    $('btn-logout').addEventListener('click', logout);
+    $('btn-refresh').addEventListener('click', refresh);
+
+    $('btn-add-student').addEventListener('click', addStudent);
+    $('stu-name').addEventListener('keydown', e => { if (e.key === 'Enter') addStudent(); });
+
+    $('btn-add-expense').addEventListener('click', addExpense);
+    $('photo-box').addEventListener('click', () => $('exp-photo').click());
+    $('exp-photo').addEventListener('change', e => handlePhoto(e.target.files[0]));
+    $('btn-clear-photo').addEventListener('click', e => { e.stopPropagation(); clearPhoto(); });
+
+    $('btn-pago-ok').addEventListener('click', doPago);
+    $('btn-pago-cancel').addEventListener('click', closePago);
+    $('modal-pago').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doPago(); } });
+    $('modal-pago').addEventListener('click', e => { if (e.target === $('modal-pago')) closePago(); });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            $('tab-alumnos').classList.toggle('hidden', tab.dataset.tab !== 'alumnos');
+            $('tab-gastos').classList.toggle('hidden', tab.dataset.tab !== 'gastos');
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        const payBtn = e.target.closest('[data-pay]');
+        if (payBtn) { openPago(Number(payBtn.dataset.pay)); return; }
+        const delStu = e.target.closest('[data-del-stu]');
+        if (delStu) { delStudent(Number(delStu.dataset.delStu)); return; }
+        const delPay = e.target.closest('[data-del-pay]');
+        if (delPay) { delPayment(Number(delPay.dataset.delPay)); return; }
+        const delExp = e.target.closest('[data-del-exp]');
+        if (delExp) { delExpense(Number(delExp.dataset.delExp)); return; }
+        const photo = e.target.closest('[data-photo]');
+        if (photo) { openLightbox(Number(photo.dataset.photo)); return; }
+    });
+
+    $('lightbox').addEventListener('click', () => $('lightbox').classList.add('hidden'));
+
+    if (token()) {
+        enterApp();
+    }
+})();
+</script>
+</body>
+</html>

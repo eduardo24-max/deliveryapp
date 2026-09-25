@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
 const app = express();
@@ -9,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(__dirname)));
 
 // Desactivar caché para que siempre cargue la versión más reciente
@@ -103,7 +104,7 @@ async function loadData() {
     } catch (e) {
         console.error('Error cargando datos:', e.message);
     }
-    return { users: [], orders: [] };
+    return { users: [], orders: [], semana: { students: [], payments: [], expenses: [] } };
 }
 
 // Cola de guardado para evitar escrituras concurrentes en Supabase
@@ -112,7 +113,7 @@ let saving = Promise.resolve();
 // Guardar datos en la nube (o en el archivo local si no hay Supabase)
 function saveData() {
     try {
-        const payload = { users, orders };
+        const payload = { users, orders, semana };
         if (supabase) {
             // Encolar el guardado para evitar pisarse entre escrituras
             saving = saving.then(async () => {
@@ -133,6 +134,7 @@ function saveData() {
 
 let users = [];
 let orders = [];
+let semana = { students: [], payments: [], expenses: [] };
 let adminEmail = process.env.ADMIN_EMAIL;
 let emailCodes = {}; // Códigos de verificación temporales
 
@@ -727,12 +729,186 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
+// ============================================================
+// SEMANA ACADÉMICA - Registro de alumnos, abonos y gastos
+// ============================================================
+
+const SEMANA_PASSWORD = process.env.SEMANA_PASSWORD || process.env.ADMIN_PASSWORD || 'semana123';
+const semanaTokenValue = crypto.createHash('sha256').update('semana::' + SEMANA_PASSWORD).digest('hex');
+
+// Ruta protegida por token (Bearer simple, el token deriva de la contraseña)
+function semanaAuth(req, res, next) {
+    const token = req.headers['x-semana-token'];
+    if (token && token === semanaTokenValue) return next();
+    return res.status(401).json({ success: false, message: 'No autorizado' });
+}
+
+function round2(n) {
+    return Math.round(n * 100) / 100;
+}
+
+function semanaTotals() {
+    const recaudado = semana.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const gastos = semana.expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    return {
+        recaudado: round2(recaudado),
+        gastos: round2(gastos),
+        saldo: round2(recaudado - gastos)
+    };
+}
+
+// Página principal de la Semana Académica (el login se hace en el frontend)
+app.get('/semana', (req, res) => {
+    res.sendFile(path.join(__dirname, 'semana.html'));
+});
+
+// Login (devuelve el token que derivamos de la contraseña)
+app.post('/api/semana/auth', (req, res) => {
+    const { password } = req.body || {};
+    if (password === SEMANA_PASSWORD) {
+        res.json({ success: true, token: semanaTokenValue });
+    } else {
+        res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
+    }
+});
+
+// Obtener todos los datos (alumnos, abonos, gastos y totales)
+app.get('/api/semana/data', semanaAuth, (req, res) => {
+    res.json({ success: true, data: semana, totals: semanaTotals() });
+});
+
+// Agregar alumno
+app.post('/api/semana/students', semanaAuth, (req, res) => {
+    try {
+        const { name, group } = req.body || {};
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre es obligatorio' });
+        }
+        const student = {
+            id: Date.now(),
+            name: name.trim(),
+            group: (group || '').trim(),
+            createdAt: new Date().toISOString()
+        };
+        semana.students.push(student);
+        saveData();
+        res.json({ success: true, student, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Eliminar alumno (también elimina sus abonos)
+app.delete('/api/semana/students/:id', semanaAuth, (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const idx = semana.students.findIndex(s => s.id === id);
+        if (idx === -1) {
+            return res.status(404).json({ success: false, message: 'Alumno no encontrado' });
+        }
+        semana.students.splice(idx, 1);
+        semana.payments = semana.payments.filter(p => p.studentId !== id);
+        saveData();
+        res.json({ success: true, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Registrar abono de un alumno
+app.post('/api/semana/payments', semanaAuth, (req, res) => {
+    try {
+        const { studentId, amount, note } = req.body || {};
+        const student = semana.students.find(s => s.id === Number(studentId));
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Alumno no encontrado' });
+        }
+        const amt = parseFloat(amount);
+        if (isNaN(amt) || amt <= 0) {
+            return res.status(400).json({ success: false, message: 'Ingresa un monto válido mayor a 0' });
+        }
+        const payment = {
+            id: Date.now(),
+            studentId: student.id,
+            amount: round2(amt),
+            note: (note || '').trim(),
+            date: new Date().toISOString()
+        };
+        semana.payments.push(payment);
+        saveData();
+        res.json({ success: true, payment, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Eliminar un abono (por si se registró por error)
+app.delete('/api/semana/payments/:id', semanaAuth, (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const before = semana.payments.length;
+        semana.payments = semana.payments.filter(p => p.id !== id);
+        if (semana.payments.length === before) {
+            return res.status(404).json({ success: false, message: 'Abono no encontrado' });
+        }
+        saveData();
+        res.json({ success: true, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Registrar gasto (con foto opcional del ticket en base64)
+app.post('/api/semana/expenses', semanaAuth, (req, res) => {
+    try {
+        const { description, amount, category, photo } = req.body || {};
+        if (!description || !description.trim()) {
+            return res.status(400).json({ success: false, message: 'La descripción es obligatoria' });
+        }
+        const amt = parseFloat(amount);
+        if (isNaN(amt) || amt <= 0) {
+            return res.status(400).json({ success: false, message: 'Ingresa un monto válido mayor a 0' });
+        }
+        const expense = {
+            id: Date.now(),
+            description: description.trim(),
+            amount: round2(amt),
+            category: (category || '').trim() || 'General',
+            photo: photo || null,
+            date: new Date().toISOString()
+        };
+        semana.expenses.push(expense);
+        saveData();
+        res.json({ success: true, expense, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Eliminar gasto
+app.delete('/api/semana/expenses/:id', semanaAuth, (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        const before = semana.expenses.length;
+        semana.expenses = semana.expenses.filter(e => e.id !== id);
+        if (semana.expenses.length === before) {
+            return res.status(404).json({ success: false, message: 'Gasto no encontrado' });
+        }
+        saveData();
+        res.json({ success: true, totals: semanaTotals() });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Iniciar servidor
 async function startServer() {
     const data = await loadData();
     users = data.users || [];
     orders = data.orders || [];
+    semana = data.semana || { students: [], payments: [], expenses: [] };
     console.log(`📦 Datos cargados: ${users.length} usuarios, ${orders.length} pedidos`);
+    console.log(`🎓 Semana Académica: ${semana.students.length} alumnos, ${semana.expenses.length} gastos`);
     
     app.listen(PORT, () => {
         console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
