@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VelozEat Admin</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar" id="sidebar" hidden>
+      <div class="brand">
+        <span class="logo">⚡</span>
+        <div>
+          <h1>VelozEat</h1>
+          <p>Panel de administración</p>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-view="dashboard">📊 Dashboard</button>
+        <button class="nav-btn" data-view="approvals">✅ Aprobaciones</button>
+        <button class="nav-btn" data-view="restaurants">🏪 Restaurantes</button>
+        <button class="nav-btn" data-view="orders">📦 Pedidos</button>
+        <button class="nav-btn" data-view="settings">⚙️ Configuración</button>
+        <button class="nav-btn" data-view="password">🔐 Contraseña</button>
+      </nav>
+      <button id="logoutBtn" class="logout">Cerrar sesión</button>
+    </aside>
+
+    <main class="main" id="main">
+      <!-- Login -->
+      <section id="loginView" class="view active">
+        <div class="login-card">
+          <div class="login-logo">⚡</div>
+          <h2>VelozEat Admin</h2>
+          <p>Acceso privado para el equipo VelozEat.</p>
+          <form id="loginForm">
+            <label>Correo</label>
+            <input type="email" id="loginEmail" value="admin@velozeat.com" required />
+            <label>Contraseña</label>
+            <input type="password" id="loginPassword" value="admin123" required />
+            <button type="submit" class="primary">Entrar</button>
+            <div class="error" id="loginError"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Dashboard -->
+      <section id="dashboardView" class="view">
+        <h2>Dashboard</h2>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="card">
+          <h3>Pedidos recientes</h3>
+          <div id="recentOrders"></div>
+        </div>
+      </section>
+
+      <!-- Approvals -->
+      <section id="approvalsView" class="view">
+        <h2>Aprobaciones pendientes</h2>
+        <div id="pendingList" class="list"></div>
+      </section>
+
+      <!-- Restaurants -->
+      <section id="restaurantsView" class="view">
+        <h2>Restaurantes</h2>
+        <div id="restaurantsList" class="list"></div>
+      </section>
+
+      <!-- Orders -->
+      <section id="ordersView" class="view">
+        <h2>Pedidos</h2>
+        <div id="ordersList" class="list"></div>
+      </section>
+
+      <!-- Settings -->
+      <section id="settingsView" class="view">
+        <h2>Configuración de ganancias</h2>
+        <div class="card">
+          <form id="settingsForm">
+            <div class="field">
+              <label>Comisión por comida (%)</label>
+              <input type="number" step="0.01" min="0" max="50" id="commissionPct" />
+            </div>
+            <h3>Envío por distancia</h3>
+            <div class="field-grid">
+              <div class="field">
+                <label>Tarifa base ($)</label>
+                <input type="number" step="0.01" min="0" id="baseFee" />
+              </div>
+              <div class="field">
+                <label>Por km ($)</label>
+                <input type="number" step="0.01" min="0" id="perKm" />
+              </div>
+              <div class="field">
+                <label>Mínimo ($)</label>
+                <input type="number" step="0.01" min="0" id="minFee" />
+              </div>
+              <div class="field">
+                <label>Máximo ($)</label>
+                <input type="number" step="0.01" min="0" id="maxFee" />
+              </div>
+              <div class="field">
+                <label>Radio máximo (km)</label>
+                <input type="number" step="1" min="1" id="maxRadiusKm" />
+              </div>
+              <div class="field">
+                <label>Repartidor recibe (%)</label>
+                <input type="number" step="0.01" min="0" max="100" id="driverSharePct" />
+              </div>
+            </div>
+            <button type="submit" class="primary">Guardar</button>
+            <div class="ok" id="settingsOk"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Password -->
+      <section id="passwordView" class="view">
+        <h2>Cambiar contraseña</h2>
+        <div class="card">
+          <form id="passwordForm">
+            <div class="field">
+              <label>Contraseña actual</label>
+              <input type="password" id="currentPassword" required />
+            </div>
+            <div class="field">
+              <label>Nueva contraseña</label>
+              <input type="password" id="newPassword" required />
+            </div>
+            <button type="submit" class="primary">Actualizar</button>
+            <div class="ok" id="passwordOk"></div>
+            <div class="error" id="passwordError"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

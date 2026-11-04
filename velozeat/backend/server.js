@@ -1,0 +1,1345 @@
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const express = require('express');
+const cors = require('cors');
+const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
+const { load, save, hashPassword, verifyPassword } = require('./store');
+const mailer = require('./mailer');
+
+const app = express();
+const PORT = process.env.PORT || process.env.VELOZEAT_PORT || 3100;
+const SECRET = process.env.VELOZEAT_SECRET || 'velozeat-dev-secret-change-me';
+const db = load();
+
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
+app.use((req, _res, next) => {
+    if (req.path.startsWith('/api')) console.log(`${req.method} ${req.path}`);
+    next();
+});
+
+// ---------------------------------------------------------------- utilidades
+const uid = () => crypto.randomUUID();
+const money = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const todayStart = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+};
+
+function publicUser(user) {
+    if (!user) return null;
+    const { passwordHash, verificationToken, ...rest } = user;
+    return rest;
+}
+
+
+function pushNotification(userId, title, text) {
+    if (!userId) return;
+    db.notifications = db.notifications || [];
+    db.notifications.push({
+        id: uid(),
+        userId,
+        title: String(title || ''),
+        text: String(text || ''),
+        createdAt: Date.now(),
+        read: false
+    });
+    save();
+}
+
+function driverProfile(userId) {
+    return db.driverProfiles.find((p) => p.userId === userId) || null;
+}
+
+function restaurantById(id) {
+    return db.restaurants.find((r) => r.id === id) || null;
+}
+
+function zoneById(id) {
+    const zones = (db.settings && db.settings.zones) || [];
+    return zones.find((z) => z.id === id) || zones[0] || null;
+}
+
+function haversineKm(a, b) {
+    const rad = (v) => (Number(v) * Math.PI) / 180;
+    const dLat = rad(b.lat - a.lat);
+    const dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 +
+        Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+// El envÃÂ­o se calcula por distancia real entre el restaurante y el destino.
+// El destino puede ser una zona de entrega (zoneId) o la ubicaciÃÂ³n GPS del cliente (lat/lng).
+// El factor 1.25 aproxima el recorrido real por calles.
+function deliveryQuote(restaurant, opts) {
+    opts = opts || {};
+    const latitude = Number(opts.lat);
+    const longitude = Number(opts.lng);
+    const useGps = Number.isFinite(latitude) && Number.isFinite(longitude) &&
+        Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 &&
+        (latitude !== 0 || longitude !== 0);
+
+    const cfg = (db.settings && db.settings.delivery) || {
+        baseFee: 12, perKm: 4, minFee: 15, maxFee: 70, driverSharePct: 0.8
+    };
+
+    let zoneId = '';
+    let zoneName = '';
+    let roadKm = 0;
+    if (useGps) {
+        const straight = Number.isFinite(restaurant.lat)
+            ? haversineKm(restaurant, { lat: latitude, lng: longitude })
+            : 0;
+        roadKm = Math.max(0.5, straight * 1.25);
+        zoneId = 'gps';
+        zoneName = 'Mi ubicaciÃÂ³n';
+    } else {
+        const zone = zoneById(opts.zoneId) || zoneById('z-centro');
+        const straight = zone && Number.isFinite(restaurant.lat) && Number.isFinite(restaurant.lng)
+            ? haversineKm(restaurant, zone)
+            : 0;
+        roadKm = Math.max(0.5, straight * 1.25);
+        zoneId = zone ? zone.id : 'z-centro';
+        zoneName = zone ? zone.name : 'Centro / Reforma';
+    }
+    const distanceKm = Math.round(roadKm * 10) / 10;
+    const maxRadiusKm = Number(cfg.maxRadiusKm) || 25;
+    const outOfRange = distanceKm > maxRadiusKm;
+    const baseFee = Number(restaurant.deliveryFee) || Number(cfg.baseFee) || 12;
+    const perKm = Number(cfg.perKm) || 4;
+    const minFee = Number(cfg.minFee) || 15;
+    const maxFee = Number(cfg.maxFee) || 70;
+    const deliveryFee = money(Math.min(maxFee, Math.max(minFee, baseFee + perKm * distanceKm)));
+    const driverSharePct = Math.min(1, Math.max(0, Number(cfg.driverSharePct) || 0.8));
+    const driverEarnings = money(deliveryFee * driverSharePct);
+    const deliveryPlatformFee = money(deliveryFee - driverEarnings);
+    return {
+        zoneId,
+        zoneName,
+        distanceKm,
+        outOfRange,
+        maxRadiusKm,
+        baseFee: money(baseFee),
+        perKm: money(perKm),
+        minFee: money(minFee),
+        maxFee: money(maxFee),
+        deliveryFee,
+        driverEarnings,
+        deliveryPlatformFee
+    };
+}
+
+function orderView(order) {
+    const restaurant = restaurantById(order.restaurantId);
+    const customer = db.users.find((u) => u.id === order.customerId);
+    const driver = db.users.find((u) => u.id === order.driverId);
+    return {
+        ...order,
+        restaurantName: restaurant ? restaurant.name : 'Restaurante',
+        restaurantEmoji: restaurant ? restaurant.emoji : 'Ã°ÂÂÂ½Ã¯Â¸Â',
+        restaurantColor: restaurant ? restaurant.color : '#7C3AED',
+        restaurantAddress: restaurant ? restaurant.address : '',
+        customerName: customer ? customer.name : 'Cliente',
+        customerPhone: customer ? customer.phone : '',
+        driverName: driver ? driver.name : null,
+        driverPhone: driver ? driver.phone : null
+    };
+}
+
+function signToken(user) {
+    const payload = Buffer.from(JSON.stringify({
+        uid: user.id,
+        role: user.role,
+        exp: Date.now() + 30 * 24 * 60 * 60 * 1000
+    })).toString('base64url');
+    const sig = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+    return `${payload}.${sig}`;
+}
+
+function verifyToken(token) {
+    try {
+        const [payload, sig] = String(token || '').split('.');
+        if (!payload || !sig) return null;
+        const expected = crypto.createHmac('sha256', SECRET).update(payload).digest('base64url');
+        if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+        const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+        if (!data.exp || data.exp < Date.now()) return null;
+        return data;
+    } catch {
+        return null;
+    }
+}
+
+function auth(roles) {
+    return (req, res, next) => {
+        const header = req.headers.authorization || '';
+        const payload = verifyToken(header.startsWith('Bearer ') ? header.slice(7) : header);
+        if (!payload) return res.status(401).json({ error: 'Tu sesiÃÂ³n expirÃÂ³. Vuelve a iniciar sesiÃÂ³n.' });
+        const user = db.users.find((u) => u.id === payload.uid);
+        if (!user) return res.status(401).json({ error: 'Usuario no encontrado.' });
+        if (roles && !roles.includes(user.role)) {
+            return res.status(403).json({ error: 'No tienes permiso para esta acciÃÂ³n.' });
+        }
+        req.user = user;
+        next();
+    };
+}
+
+function optionalAuth(req, _res, next) {
+    const header = req.headers.authorization || '';
+    const payload = verifyToken(header.startsWith('Bearer ') ? header.slice(7) : header);
+    if (payload) req.user = db.users.find((u) => u.id === payload.uid) || null;
+    next();
+}
+
+function ownsRestaurant(user, restaurantId) {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.role === 'restaurant' && user.restaurantId === restaurantId;
+}
+
+function canSeeOrder(user, order) {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (user.role === 'customer') return order.customerId === user.id;
+    if (user.role === 'restaurant') return order.restaurantId === user.restaurantId;
+    if (user.role === 'driver') {
+        return order.driverId === user.id || (order.status === 'ready' && !order.driverId);
+    }
+    return false;
+}
+
+function nextOrderCode() {
+    const codes = db.orders.map((o) => parseInt(o.code, 10)).filter((n) => !isNaN(n));
+    return String((codes.length ? Math.max(...codes) : 1000) + 1);
+}
+
+function newSecurityCode() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function recomputeRestaurantRating(restaurant, rating) {
+    const count = restaurant.ratingCount || 0;
+    const current = restaurant.rating || 0;
+    restaurant.rating = Math.round(((current * count + rating) / (count + 1)) * 10) / 10;
+    restaurant.ratingCount = count + 1;
+}
+
+// Notificaciones por correo (modo simulado si no hay SMTP configurado).
+async function notify(email, subject, text) {
+    if (!email) return;
+    try {
+        await mailer.sendEmail(email, subject, text);
+    } catch (error) {
+        console.error(`No se pudo enviar correo a ${email}:`, error.message);
+    }
+}
+
+function customerEmailOf(order) {
+    return (db.users.find((u) => u.id === order.customerId) || {}).email;
+}
+
+function restaurantEmailOf(restaurant) {
+    return (db.users.find((u) => u.restaurantId === restaurant.id && u.role === 'restaurant') || {}).email;
+}
+
+function driverEmailOf(order) {
+    return (db.users.find((u) => u.id === order.driverId && u.role === 'driver') || {}).email;
+}
+
+// ---------------------------------------------------------------- salud / meta
+app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, app: 'VelozEat API', version: '1.0.0', time: new Date().toISOString() });
+});
+
+app.get('/api/meta', (_req, res) => {
+    const categories = [...new Set(db.restaurants.filter((r) => r.approved).map((r) => r.category))].sort();
+    res.json({
+        brand: db.settings.brand,
+        city: db.settings.city,
+        currency: db.settings.currency,
+        commissionPct: db.settings.commissionPct,
+        delivery: db.settings.delivery,
+        zones: db.settings.zones,
+        categories,
+        paymentMethods: [
+            { id: 'cash', label: 'Efectivo', emoji: 'Ã°ÂÂÂµ', detail: 'Paga al recibir tu pedido' },
+            { id: 'card', label: 'Tarjeta', emoji: 'Ã°ÂÂÂ³', detail: 'Pago simulado con tarjeta' }
+        ]
+    });
+});
+
+// ---------------------------------------------------------------- auth
+app.post('/api/auth/register', (req, res) => {
+    const body = req.body || {};
+    const name = String(body.name || '').trim();
+    const email = String(body.email || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    const phone = String(body.phone || '').trim();
+    const role = String(body.role || 'customer');
+
+    if (name.length < 2) return res.status(400).json({ error: 'Escribe tu nombre completo.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'El correo no es vÃÂ¡lido.' });
+    if (password.length < 6) return res.status(400).json({ error: 'La contraseÃÂ±a debe tener al menos 6 caracteres.' });
+    if (!['customer', 'driver', 'restaurant'].includes(role)) return res.status(400).json({ error: 'Tipo de cuenta no vÃÂ¡lido.' });
+    if (db.users.some((u) => u.email === email)) return res.status(409).json({ error: 'Ese correo ya estÃÂ¡ registrado.' });
+
+    const user = {
+        id: uid(),
+        name,
+        email,
+        phone,
+        role,
+        passwordHash: hashPassword(password),
+        emailVerified: false,
+        walletBalance: 0,
+        verificationToken: crypto.randomUUID() + crypto.randomUUID(),
+        address: String(body.address || '').trim(),
+        createdAt: Date.now()
+    };
+
+    let restaurant = null;
+    if (role === 'restaurant') {
+        const restaurantName = String(body.restaurantName || '').trim();
+        if (restaurantName.length < 2) return res.status(400).json({ error: 'Escribe el nombre de tu restaurante.' });
+        const palette = ['#FF6A00', '#F97316', '#DC2626', '#DB2777', '#A855F7', '#0EA5E9', '#16A34A'];
+        restaurant = {
+            id: uid(),
+            ownerId: user.id,
+            name: restaurantName,
+            category: String(body.category || 'Otros').trim() || 'Otros',
+            emoji: String(body.emoji || 'Ã°ÂÂÂ½Ã¯Â¸Â'),
+            color: palette[db.restaurants.length % palette.length],
+            description: String(body.description || 'Nuevo restaurante en VelozEat').trim(),
+            address: String(body.address || '').trim(),
+            rating: 5,
+            ratingCount: 1,
+            deliveryFee: Number(body.deliveryFee) || 15,
+            minOrder: Number(body.minOrder) || 50,
+            etaMinutes: Number(body.etaMinutes) || 30,
+            isOpen: false,
+            approved: false,
+            createdAt: Date.now(),
+            menu: []
+        };
+        db.restaurants.push(restaurant);
+        user.restaurantId = restaurant.id;
+    }
+
+    if (role === 'driver') {
+        db.driverProfiles.push({
+            userId: user.id,
+            vehicle: String(body.vehicle || 'moto'),
+            isOnline: false,
+            rating: 5,
+            deliveries: 0,
+            earnings: 0,
+            lat: null,
+            lng: null
+        });
+    }
+
+    const verifyLink = `${req.protocol}://${req.get('host')}/api/auth/verify-email?token=${user.verificationToken}`;
+    void notify(user.email, 'Verifica tu correo VelozEat', `Hola ${user.name}, confirma tu cuenta haciendo clic en este enlace:\n${verifyLink}\nSi no creaste esta cuenta, ignora este mensaje.`);
+    db.users.push(user);
+    save();
+    res.status(201).json({
+        token: signToken(user),
+        user: publicUser(user),
+        restaurant,
+        message: role === 'restaurant'
+            ? 'Cuenta creada. Revisa tu correo para verificar tu cuenta. Tu restaurante quedara en revision por el equipo VelozEat.'
+            : 'Cuenta creada. Revisa tu correo para verificar tu cuenta.'
+    });
+});
+
+app.post('/api/auth/login', (req, res) => {
+    const email = String((req.body || {}).email || '').trim().toLowerCase();
+    const password = String((req.body || {}).password || '');
+    const user = db.users.find((u) => u.email === email);
+    if (user && !user.emailVerified) {
+        return res.status(403).json({ error: 'Debes verificar tu correo antes de iniciar sesiÃÂ³n.', code: 'EMAIL_NOT_VERIFIED' });
+    }
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+        return res.status(401).json({ error: 'Correo o contraseÃÂ±a incorrectos.' });
+    }
+    const restaurant = user.restaurantId ? restaurantById(user.restaurantId) : null;
+    res.json({
+        token: signToken(user),
+        user: publicUser(user),
+        restaurant,
+        driverProfile: user.role === 'driver' ? driverProfile(user.id) : null
+    });
+});
+
+// ---------------------------------------------------------------- verificacion de correo
+app.get('/api/auth/verify-email', (req, res) => {
+    const token = String(req.query.token || '').trim();
+    const user = db.users.find((u) => u.verificationToken === token);
+    if (!user) return res.status(400).send('<h1>Token invalido o expirado</h1>');
+    user.emailVerified = true;
+    user.verificationToken = null;
+    save();
+    res.send(`<!doctype html><html><body style="font-family:sans-serif;text-align:center;padding:40px">
+        <h1>Correo verificado</h1>
+        <p>Tu cuenta VelozEat ya esta activa. Ya puedes iniciar sesion en la app.</p>
+    </body></html>`);
+});
+
+app.post('/api/auth/resend-verification', (req, res) => {
+    const email = String((req.body || {}).email || '').trim().toLowerCase();
+    const user = db.users.find((u) => u.email === email);
+    if (!user) return res.status(404).json({ error: 'No encontramos una cuenta con ese correo.' });
+    if (user.emailVerified) return res.json({ message: 'Tu correo ya esta verificado.' });
+    if (!user.verificationToken) {
+        user.verificationToken = crypto.randomUUID() + crypto.randomUUID();
+        save();
+    }
+    const link = `${req.protocol}://${req.get('host')}/api/auth/verify-email?token=${user.verificationToken}`;
+    void notify(user.email, 'Verifica tu correo VelozEat', `Hola ${user.name}, confirma tu cuenta haciendo clic en este enlace:\n${link}\nSi no creaste esta cuenta, ignora este mensaje.`);
+    res.json({ message: 'Te enviamos un nuevo correo de verificacion.' });
+});
+
+app.get('/api/me', auth(), (req, res) => {
+    res.json({
+        user: publicUser(req.user),
+        restaurant: req.user.restaurantId ? restaurantById(req.user.restaurantId) : null,
+        driverProfile: req.user.role === 'driver' ? driverProfile(req.user.id) : null
+    });
+});
+
+app.put('/api/me', auth(), (req, res) => {
+    const body = req.body || {};
+    for (const key of ['name', 'phone', 'address']) {
+        if (body[key] !== undefined) req.user[key] = String(body[key]).trim();
+    }
+    save();
+    res.json({ user: publicUser(req.user) });
+});
+
+// ---------------------------------------------------------------- restaurantes
+app.get('/api/restaurants', optionalAuth, (req, res) => {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    const category = String(req.query.category || '').trim();
+    const includeAll = req.query.all === '1' && req.user && req.user.role === 'admin';
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    const useGps = Number.isFinite(lat) && Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0);
+
+    let list = db.restaurants.filter((r) => includeAll || r.approved);
+    if (category && category !== 'Todos') list = list.filter((r) => r.category === category);
+    if (q) {
+        list = list.filter((r) =>
+            r.name.toLowerCase().includes(q) ||
+            r.category.toLowerCase().includes(q) ||
+            r.description.toLowerCase().includes(q) ||
+            r.menu.some((m) => m.name.toLowerCase().includes(q))
+        );
+    }
+
+    const restaurants = list
+        .slice()
+        .map((r) => ({
+            ...r,
+            distanceKm: useGps && Number.isFinite(r.lat) && Number.isFinite(r.lng)
+                ? Math.round(Math.max(0.5, haversineKm(r, { lat, lng }) * 1.25) * 10) / 10
+                : null,
+        }))
+        .sort((a, b) => {
+            const openA = Number(a.isOpen) - Number(b.isOpen);
+            if (openA !== 0) return openA * -1;
+            if (useGps) return (a.distanceKm || 999) - (b.distanceKm || 999);
+            return b.rating - a.rating;
+        })
+        .map((r) => ({
+            ...r,
+            menu: undefined,
+            menuCount: r.menu.length,
+            popularItems: r.menu.filter((m) => m.available).slice(0, 3)
+        }));
+
+    const categories = ['Todos', ...new Set(db.restaurants.filter((r) => r.approved).map((r) => r.category))];
+    res.json({ restaurants, categories });
+});
+
+app.get('/api/restaurants/:id', optionalAuth, (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    const privileged = req.user && (req.user.role === 'admin' || req.user.restaurantId === restaurant.id);
+    if (!restaurant.approved && !privileged) return res.status(404).json({ error: 'Restaurante no disponible.' });
+    res.json({ restaurant });
+});
+
+app.get('/api/restaurants/:id/quote', optionalAuth, (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    const zoneId = String(req.query.zoneId || (req.user && req.user.zoneId) || 'z-centro');
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+    res.json(deliveryQuote(restaurant, { zoneId, lat, lng }));
+});
+
+app.put('/api/restaurants/:id', auth(['restaurant', 'admin']), (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este restaurante.' });
+
+    const body = req.body || {};
+    const fields = ['name', 'description', 'address', 'category', 'emoji'];
+    for (const key of fields) {
+        if (body[key] !== undefined) restaurant[key] = String(body[key]).trim();
+    }
+    for (const key of ['deliveryFee', 'minOrder', 'etaMinutes']) {
+        if (body[key] !== undefined) restaurant[key] = Math.max(0, Number(body[key]) || 0);
+    }
+    if (body.isOpen !== undefined && restaurant.approved) restaurant.isOpen = !!body.isOpen;
+    save();
+    res.json({ restaurant, message: 'Restaurante actualizado.' });
+});
+
+app.post('/api/restaurants/:id/menu', auth(['restaurant', 'admin']), (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂº.' });
+
+    const body = req.body || {};
+    const name = String(body.name || '').trim();
+    const price = Number(body.price);
+    if (name.length < 2) return res.status(400).json({ error: 'El platillo necesita un nombre.' });
+    if (!(price > 0)) return res.status(400).json({ error: 'El precio debe ser mayor a cero.' });
+
+    const newItem = {
+        id: uid(),
+        name,
+        description: String(body.description || '').trim(),
+        price: money(price),
+        category: String(body.category || 'MenÃÂº').trim() || 'MenÃÂº',
+        emoji: String(body.emoji || 'Ã°ÂÂÂ½Ã¯Â¸Â'),
+        available: body.available !== false
+    };
+    restaurant.menu.push(newItem);
+    save();
+    res.status(201).json({ item: newItem, restaurant, message: 'Platillo agregado.' });
+});
+
+app.put('/api/restaurants/:id/menu/:itemId', auth(['restaurant', 'admin']), (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂº.' });
+
+    const menuItem = restaurant.menu.find((m) => m.id === req.params.itemId);
+    if (!menuItem) return res.status(404).json({ error: 'Platillo no encontrado.' });
+
+    const body = req.body || {};
+    if (body.name !== undefined) menuItem.name = String(body.name).trim() || menuItem.name;
+    if (body.description !== undefined) menuItem.description = String(body.description).trim();
+    if (body.category !== undefined) menuItem.category = String(body.category).trim() || menuItem.category;
+    if (body.emoji !== undefined) menuItem.emoji = String(body.emoji) || menuItem.emoji;
+    if (body.price !== undefined) {
+        const price = Number(body.price);
+        if (!(price > 0)) return res.status(400).json({ error: 'El precio debe ser mayor a cero.' });
+        menuItem.price = money(price);
+    }
+    if (body.available !== undefined) menuItem.available = !!body.available;
+    save();
+    res.json({ item: menuItem, restaurant, message: 'Platillo actualizado.' });
+});
+
+app.delete('/api/restaurants/:id/menu/:itemId', auth(['restaurant', 'admin']), (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂº.' });
+
+    const index = restaurant.menu.findIndex((m) => m.id === req.params.itemId);
+    if (index === -1) return res.status(404).json({ error: 'Platillo no encontrado.' });
+    restaurant.menu.splice(index, 1);
+    save();
+    res.json({ restaurant, message: 'Platillo eliminado.' });
+});
+
+
+// ---------------------------------------------------------------- cupones
+function findCoupon(code) {
+    const normalized = String(code || '').trim().toUpperCase();
+    if (!normalized) return null;
+    return (db.coupons || []).find((c) => String(c.code || '').toUpperCase() === normalized) || null;
+}
+
+function couponDiscount(coupon, subtotal) {
+    if (!coupon || !coupon.active) return 0;
+    if (coupon.expiresAt && Number(coupon.expiresAt) < Date.now()) return 0;
+    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) return 0;
+    if (subtotal < (coupon.minOrder || 0)) return 0;
+    let discount = 0;
+    if (coupon.type === 'percent') {
+        discount = subtotal * (Number(coupon.value) / 100);
+    } else {
+        discount = Number(coupon.value) || 0;
+    }
+    if (coupon.maxDiscount) discount = Math.min(discount, Number(coupon.maxDiscount));
+    return money(Math.max(0, Math.min(subtotal, discount)));
+}
+
+// ---------------------------------------------------------------- pedidos
+app.post('/api/coupons/validate', auth(['customer']), (req, res) => {
+    const body = req.body || {};
+    const coupon = findCoupon(body.code);
+    if (!coupon) return res.status(404).json({ error: 'CupÃÂ³n no vÃÂ¡lido.' });
+    const subtotal = money(Number(body.subtotal) || 0);
+    const discount = couponDiscount(coupon, subtotal);
+    if (discount <= 0) {
+        if (subtotal < (coupon.minOrder || 0)) {
+            return res.status(400).json({ error: `Este cupÃÂ³n requiere un pedido mÃÂ­nimo de $${coupon.minOrder}.` });
+        }
+        return res.status(400).json({ error: 'El cupÃÂ³n no aplica a este pedido.' });
+    }
+    res.json({ code: coupon.code, discount, message: `CupÃÂ³n aplicado: -$${discount}` });
+});
+
+app.post('/api/orders', auth(['customer']), (req, res) => {
+    const body = req.body || {};
+    const restaurant = restaurantById(body.restaurantId);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    if (!restaurant.approved) return res.status(400).json({ error: 'El restaurante aÃÂºn no estÃÂ¡ aprobado.' });
+    if (!restaurant.isOpen) return res.status(400).json({ error: 'El restaurante estÃÂ¡ cerrado en este momento.' });
+
+    const rawItems = Array.isArray(body.items) ? body.items : [];
+    if (!rawItems.length) return res.status(400).json({ error: 'Tu carrito estÃÂ¡ vacÃÂ­o.' });
+
+    const items = [];
+    for (const raw of rawItems) {
+        const menuItem = restaurant.menu.find((m) => m.id === raw.itemId);
+        if (!menuItem || !menuItem.available) {
+            return res.status(400).json({ error: 'Uno de los platillos ya no estÃÂ¡ disponible.' });
+        }
+        const qty = Math.max(1, Math.min(20, parseInt(raw.qty, 10) || 1));
+        items.push({ itemId: menuItem.id, name: menuItem.name, emoji: menuItem.emoji, price: menuItem.price, qty });
+    }
+
+    const subtotal = money(items.reduce((sum, it) => sum + it.price * it.qty, 0));
+    const couponCode = String(body.couponCode || '').trim().toUpperCase();
+    const coupon = couponCode ? findCoupon(couponCode) : null;
+    const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
+    if (subtotal < restaurant.minOrder) {
+        return res.status(400).json({ error: `El pedido mÃÂ­nimo es $${restaurant.minOrder}.` });
+    }
+
+    let address = String(body.address || req.user.address || '').trim();
+    const bodyLatTmp = Number(body.lat);
+    const bodyLngTmp = Number(body.lng);
+    const hasGpsTmp = Number.isFinite(bodyLatTmp) && Number.isFinite(bodyLngTmp) &&
+        Math.abs(bodyLatTmp) <= 90 && Math.abs(bodyLngTmp) <= 180 && (bodyLatTmp !== 0 || bodyLngTmp !== 0);
+    if (address.length < 5) {
+        if (hasGpsTmp) address = `Ubicacion GPS (${bodyLatTmp.toFixed(5)}, ${bodyLngTmp.toFixed(5)})`;
+        else { const z = zoneById(String(body.zoneId || req.user.zoneId || 'z-centro')); address = z ? z.name : 'Ubicacion seleccionada'; }
+    }
+    const paymentMethod = ['cash', 'card', 'wallet'].includes(body.paymentMethod) ? body.paymentMethod : 'cash';
+    const tip = Math.max(0, Math.min(500, Number(body.tip) || 0));
+    const zoneId = String(body.zoneId || req.user.zoneId || 'z-centro');
+    const bodyLat = Number(body.lat);
+    const bodyLng = Number(body.lng);
+    const quote = deliveryQuote(restaurant, { zoneId, lat: bodyLat, lng: bodyLng });
+    if (quote.outOfRange) {
+        return res.status(400).json({
+            error: `Tu ubicaciÃÂ³n estÃÂ¡ a ${quote.distanceKm} km del restaurante (${quote.zoneName}). ` +
+                `El ÃÂ¡rea de entrega es de ${quote.maxRadiusKm} km.`
+        });
+    }
+    const deliveryFee = quote.deliveryFee;
+    const platformFee = money(subtotal * db.settings.commissionPct + quote.deliveryPlatformFee);
+
+    req.user.address = address;
+    req.user.zoneId = quote.zoneId;
+    if (Number.isFinite(bodyLat) && Number.isFinite(bodyLng) && (bodyLat !== 0 || bodyLng !== 0)) {
+        req.user.lat = bodyLat;
+        req.user.lng = bodyLng;
+    }
+
+    const order = {
+        id: uid(),
+        code: nextOrderCode(),
+        securityCode: newSecurityCode(),
+        customerId: req.user.id,
+        restaurantId: restaurant.id,
+        driverId: null,
+        status: 'pending',
+        items,
+        subtotal,
+        deliveryFee,
+        tip: money(tip),
+        couponCode: coupon ? coupon.code : null,
+        discount: money(discount),
+        total: money(Math.max(0, subtotal + deliveryFee + tip - discount)),
+        driverEarnings: money(quote.driverEarnings + tip),
+        platformFee,
+        deliveryPlatformFee: quote.deliveryPlatformFee,
+        distanceKm: quote.distanceKm,
+        zoneId: quote.zoneId,
+        zoneName: quote.zoneName,
+        customerLat: Number.isFinite(bodyLat) ? bodyLat : null,
+        customerLng: Number.isFinite(bodyLng) ? bodyLng : null,
+        address,
+        notes: String(body.notes || '').trim(),
+        paymentMethod,
+        createdAt: Date.now(),
+        acceptedAt: null,
+        readyAt: null,
+        assignedAt: null,
+        pickedAt: null,
+        deliveredAt: null,
+        rating: null,
+        ratingComment: ''
+    };
+
+    if (paymentMethod === 'wallet') {
+        if ((req.user.walletBalance || 0) < order.total) {
+            return res.status(400).json({ error: 'Saldo insuficiente en tu billetera.' });
+        }
+        req.user.walletBalance = money((req.user.walletBalance || 0) - order.total);
+    }
+    if (coupon && discount > 0) coupon.usedCount = (coupon.usedCount || 0) + 1;
+    db.orders.push(order);
+    save();
+
+    const customerEmail = customerEmailOf(order);
+    const restaurantEmail = restaurantEmailOf(restaurant);
+    void notify(
+        customerEmail,
+        `Ã¢ÂÂ VelozEat ÃÂ· Pedido #${order.code} recibido`,
+        `Hola ${(db.users.find((u) => u.id === order.customerId) || {}).name || ''}, tu pedido en ${restaurant.name} fue recibido.\n${mailer.orderLine(order)}\nTe avisaremos cuando llegue.`
+    );
+    void notify(
+        restaurantEmail,
+        `Ã°ÂÂÂ VelozEat ÃÂ· Nuevo pedido #${order.code}`,
+        `Tienes un nuevo pedido pendiente de confirmaciÃÂ³n.\n${mailer.orderLine(order)}`
+    );
+
+    res.status(201).json({ order: orderView(order), message: 'ÃÂ¡Pedido enviado! Espera la confirmaciÃÂ³n del restaurante.' });
+});
+
+app.get('/api/orders', auth(), (req, res) => {
+    const status = String(req.query.status || '');
+    let list = db.orders.slice();
+
+    if (req.user.role === 'customer') list = list.filter((o) => o.customerId === req.user.id);
+    else if (req.user.role === 'restaurant') list = list.filter((o) => o.restaurantId === req.user.restaurantId);
+    else if (req.user.role === 'driver') list = list.filter((o) => o.driverId === req.user.id);
+    // admin: todos
+
+    if (status) list = list.filter((o) => o.status === status);
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    res.json({ orders: list.slice(0, 100).map(orderView) });
+});
+
+app.get('/api/orders/:id', auth(), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes ver este pedido.' });
+    res.json({ order: orderView(order) });
+});
+
+app.get('/api/orders/:id/tracking', auth(), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes ver este pedido.' });
+
+    const restaurant = restaurantById(order.restaurantId);
+    const customerCoordsResult = customerCoords(order);
+    const driverCoordsResult = order.driverId ? driverCoords(order) : null;
+    const driverUser = order.driverId ? db.users.find((u) => u.id === order.driverId) : null;
+    const profile = order.driverId ? driverProfile(order.driverId) : null;
+
+    res.json({
+        orderId: order.id,
+        status: order.status,
+        restaurant: restaurant ? {
+            id: restaurant.id,
+            name: restaurant.name,
+            emoji: restaurant.emoji,
+            lat: restaurant.lat,
+            lng: restaurant.lng,
+            address: restaurant.address,
+        } : null,
+        customer: customerCoordsResult ? {
+            ...customerCoordsResult,
+            address: order.address,
+            name: (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente',
+        } : null,
+        driver: driverUser && driverCoordsResult ? {
+            id: driverUser.id,
+            name: driverUser.name,
+            phone: driverUser.phone,
+            lat: driverCoordsResult.lat,
+            lng: driverCoordsResult.lng,
+            live: !!driverCoordsResult.live,
+            vehicle: profile ? profile.vehicle : 'moto',
+            isOnline: profile ? profile.isOnline : false,
+        } : null,
+        distanceKm: order.distanceKm,
+        updatedAt: Date.now(),
+    });
+});
+
+function transition(allowedStatuses, nextStatus, extra = {}) {
+    return (req, res) => {
+        const order = db.orders.find((o) => o.id === req.params.id);
+        if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+        if (req.user.role === 'restaurant' && order.restaurantId !== req.user.restaurantId) {
+            return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
+        }
+        if (!allowedStatuses.includes(order.status)) {
+            return res.status(409).json({ error: `No se puede hacer eso: el pedido estÃÂ¡ en estado "${order.status}".` });
+        }
+        Object.assign(order, extra);
+        order.status = nextStatus;
+        save();
+
+        const restaurant = restaurantById(order.restaurantId);
+        const customer = customerEmailOf(order);
+        const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
+        if (nextStatus === 'accepted') {
+            pushNotification(order.customerId, 'Pedido aceptado', `${restaurant ? restaurant.name : 'El restaurante'} confirmo tu pedido #${order.code}.`);
+            void notify(customer, `Ã¢ÂÂ VelozEat ÃÂ· Pedido #${order.code} aceptado`,
+                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} aceptÃÂ³ tu pedido y lo estÃÂ¡ preparando.\n${mailer.orderLine(order)}`);
+        } else if (nextStatus === 'preparing') {
+            pushNotification(order.customerId, 'En preparacion', `Tu pedido #${order.code} se esta preparando.`);
+            void notify(customer, `Ã°ÂÂÂ¨Ã¢ÂÂÃ°ÂÂÂ³ VelozEat ÃÂ· Pedido #${order.code} en preparaciÃÂ³n`,
+                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} estÃÂ¡ preparando tu pedido.\n${mailer.orderLine(order)}`);
+        } else if (nextStatus === 'ready') {
+            pushNotification(order.customerId, 'Pedido listo', `Tu pedido #${order.code} esta listo para recoger.`);
+            void notify(customer, `Ã°ÂÂÂ½Ã¯Â¸Â VelozEat ÃÂ· Pedido #${order.code} listo`,
+                `${customerName}, tu pedido estÃÂ¡ listo y pronto serÃÂ¡ recogido por un repartidor.\n${mailer.orderLine(order)}`);
+        }
+
+        res.json({ order: orderView(order), message: 'Pedido actualizado.' });
+    };
+}
+
+app.post('/api/orders/:id/accept', auth(['restaurant']), (req, res, next) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (order && order.restaurantId !== req.user.restaurantId) {
+        return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
+    }
+    return transition(['pending'], 'accepted', { acceptedAt: Date.now() })(req, res, next);
+});
+
+app.post('/api/orders/:id/prepare', auth(['restaurant']), (req, res, next) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (order && order.restaurantId !== req.user.restaurantId) {
+        return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
+    }
+    return transition(['accepted'], 'preparing')(req, res, next);
+});
+
+app.post('/api/orders/:id/ready', auth(['restaurant']), (req, res, next) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (order && order.restaurantId !== req.user.restaurantId) {
+        return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
+    }
+    return transition(['preparing'], 'ready', { readyAt: Date.now() })(req, res, next);
+});
+
+app.post('/api/orders/:id/cancel', auth(), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+
+    const role = req.user.role;
+    if (role === 'customer' && order.customerId !== req.user.id) {
+        return res.status(403).json({ error: 'Este pedido no es tuyo.' });
+    }
+    if (role === 'restaurant' && order.restaurantId !== req.user.restaurantId) {
+        return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
+    }
+    if (role === 'driver') return res.status(403).json({ error: 'El repartidor no puede cancelar pedidos.' });
+    if (['delivered', 'cancelled'].includes(order.status)) {
+        return res.status(409).json({ error: 'Este pedido ya no se puede cancelar.' });
+    }
+    if (role === 'customer' && !['pending', 'accepted'].includes(order.status)) {
+        return res.status(409).json({ error: 'El restaurante ya estÃÂ¡ preparando tu pedido. Contacta al soporte.' });
+    }
+
+    order.status = 'cancelled';
+    order.cancelledAt = Date.now();
+    order.cancelledBy = role;
+    order.cancelReason = String((req.body || {}).reason || 'Cancelado').trim();
+    save();
+
+    const restaurant = restaurantById(order.restaurantId);
+    const customer = customerEmailOf(order);
+    const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
+    if (role === 'restaurant') {
+        void notify(customer, `Ã¢ÂÂ VelozEat ÃÂ· Pedido #${order.code} cancelado`,
+            `${customerName}, el restaurante cancelÃÂ³ tu pedido.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
+    } else if (role === 'customer') {
+        void notify(restaurantEmailOf(restaurant), `Ã¢ÂÂ VelozEat ÃÂ· Pedido #${order.code} cancelado por el cliente`,
+            `El cliente cancelÃÂ³ el pedido #${order.code}.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
+    }
+
+    res.json({ order: orderView(order), message: 'Pedido cancelado.' });
+});
+
+app.post('/api/orders/:id/rate', auth(['customer']), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (order.customerId !== req.user.id) return res.status(403).json({ error: 'Este pedido no es tuyo.' });
+    if (order.status !== 'delivered') return res.status(409).json({ error: 'Solo puedes calificar pedidos entregados.' });
+    if (order.rating) return res.status(409).json({ error: 'Ya calificaste este pedido.' });
+
+    const rating = Math.max(1, Math.min(5, parseInt((req.body || {}).rating, 10) || 5));
+    order.rating = rating;
+    order.ratingComment = String((req.body || {}).comment || '').trim();
+    const restaurant = restaurantById(order.restaurantId);
+    if (restaurant) recomputeRestaurantRating(restaurant, rating);
+    save();
+    res.json({ order: orderView(order), message: 'ÃÂ¡Gracias por calificar!' });
+});
+
+// ---------------------------------------------------------------- repartidores
+app.get('/api/driver/available', auth(['driver']), (req, res) => {
+    const list = db.orders
+        .filter((o) => o.status === 'ready' && !o.driverId)
+        .sort((a, b) => a.readyAt - b.readyAt)
+        .map(orderView);
+    res.json({ orders: list });
+});
+
+app.get('/api/driver/summary', auth(['driver']), (req, res) => {
+    const profile = driverProfile(req.user.id);
+    const start = todayStart();
+    const mine = db.orders.filter((o) => o.driverId === req.user.id);
+    const deliveredToday = mine.filter((o) => o.status === 'delivered' && o.deliveredAt >= start);
+    const active = mine.find((o) => ['assigned', 'picked_up'].includes(o.status));
+    res.json({
+        profile,
+        isOnline: profile ? profile.isOnline : false,
+        todayEarnings: money(deliveredToday.reduce((sum, o) => sum + o.driverEarnings, 0)),
+        todayDeliveries: deliveredToday.length,
+        totalDeliveries: profile ? profile.deliveries : 0,
+        rating: profile ? profile.rating : 5,
+        activeOrder: active ? orderView(active) : null,
+        recent: mine.filter((o) => o.status === 'delivered').sort((a, b) => b.deliveredAt - a.deliveredAt).slice(0, 10).map(orderView)
+    });
+});
+
+app.post('/api/driver/status', auth(['driver']), (req, res) => {
+    const profile = driverProfile(req.user.id);
+    if (!profile) return res.status(404).json({ error: 'Perfil de repartidor no encontrado.' });
+    profile.isOnline = !!(req.body || {}).isOnline;
+    if (req.body && req.body.lat !== undefined && db.driverLocations) {
+        const lat = Number(req.body.lat);
+        const lng = Number(req.body.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            profile.lat = lat;
+            profile.lng = lng;
+            db.driverLocations[req.user.id] = { lat, lng, updatedAt: Date.now() };
+        }
+    }
+    save();
+    res.json({ profile, message: profile.isOnline ? 'EstÃÂ¡s en lÃÂ­nea. RecibirÃÂ¡s pedidos.' : 'EstÃÂ¡s fuera de lÃÂ­nea.' });
+});
+
+app.post('/api/orders/:id/claim', auth(['driver']), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (order.status !== 'ready' || order.driverId) {
+        return res.status(409).json({ error: 'Otro repartidor tomÃÂ³ este pedido o aÃÂºn no estÃÂ¡ listo.' });
+    }
+    const profile = driverProfile(req.user.id);
+    if (profile && !profile.isOnline) {
+        return res.status(409).json({ error: 'Ponte en lÃÂ­nea para tomar pedidos.' });
+    }
+    order.driverId = req.user.id;
+    order.status = 'assigned';
+    order.assignedAt = Date.now();
+    save();
+
+    const customer = customerEmailOf(order);
+    const driver = (db.users.find((u) => u.id === req.user.id) || {});
+    const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
+    void notify(customer, `Ã°ÂÂÂµ VelozEat ÃÂ· Pedido #${order.code} asignado`,
+        `${customerName}, ${driver.name || 'Tu repartidor'} ya tomÃÂ³ tu pedido y va por ÃÂ©l.\n${mailer.orderLine(order)}`);
+
+    res.json({ order: orderView(order), message: 'ÃÂ¡Pedido asignado! Ve al restaurante por ÃÂ©l.' });
+});
+
+app.post('/api/orders/:id/pickup', auth(['driver']), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂ¡ asignado a ti.' });
+    if (order.status !== 'assigned') return res.status(409).json({ error: 'El pedido no estÃÂ¡ listo para recoger.' });
+    order.status = 'picked_up';
+    order.pickedAt = Date.now();
+    save();
+
+    const customer = customerEmailOf(order);
+    const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
+    void notify(customer, `Ã°ÂÂÂµ VelozEat ÃÂ· Pedido #${order.code} en camino`,
+        `${customerName}, tu pedido ya saliÃÂ³ del restaurante y estÃÂ¡ en camino.\n${mailer.orderLine(order)}`);
+
+    res.json({ order: orderView(order), message: 'ÃÂ¡Pedido recogido! Ya vas en camino.' });
+});
+
+app.post('/api/orders/:id/deliver', auth(['driver']), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂ¡ asignado a ti.' });
+    if (order.status !== 'picked_up') return res.status(409).json({ error: 'Primero marca que recogiste el pedido.' });
+
+    const code = String((req.body || {}).code || '').trim();
+    if (code !== order.securityCode) {
+        return res.status(400).json({ error: 'El cÃÂ³digo de entrega no coincide. PÃÂ­deselo al cliente.' });
+    }
+
+    order.status = 'delivered';
+    order.deliveredAt = Date.now();
+    const profile = driverProfile(req.user.id);
+    if (profile) {
+        profile.deliveries += 1;
+        profile.earnings = money(profile.earnings + order.driverEarnings);
+    }
+    save();
+
+    const customer = customerEmailOf(order);
+    const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
+    void notify(customer, `Ã¢ÂÂ VelozEat ÃÂ· Pedido #${order.code} entregado`,
+        `${customerName}, ÃÂ¡tu pedido fue entregado!\n${mailer.orderLine(order)}\nGracias por usar VelozEat.`);
+    void notify(driverEmailOf(order), `Ã°ÂÂÂµ VelozEat ÃÂ· Entrega #${order.code} ÃÂ· Ganaste $${order.driverEarnings}`,
+        `Entrega #${order.code} completada.\n${mailer.orderLine(order)}\nTus ganancias fueron actualizadas.`);
+
+    res.json({ order: orderView(order), message: `Entrega completada. Ganaste $${order.driverEarnings}.` });
+});
+
+// ---------------------------------------------------------------- seguimiento
+function customerCoords(order) {
+    if (Number.isFinite(order.customerLat) && Number.isFinite(order.customerLng) &&
+        (order.customerLat !== 0 || order.customerLng !== 0)) {
+        return { lat: order.customerLat, lng: order.customerLng };
+    }
+    const customer = db.users.find((u) => u.id === order.customerId);
+    const zone = zoneById((customer && customer.zoneId) || order.zoneId);
+    return zone ? { lat: zone.lat, lng: zone.lng } : null;
+}
+
+function driverCoords(order) {
+    const live = db.driverLocations && db.driverLocations[order.driverId];
+    if (live && Date.now() - live.updatedAt < 10 * 60 * 1000) {
+        return { lat: live.lat, lng: live.lng, live: true };
+    }
+    // PosiciÃÂ³n estimada para la demostraciÃÂ³n (restaurante Ã¢ÂÂ cliente)
+    const restaurant = restaurantById(order.restaurantId);
+    if (!restaurant) return null;
+    const dest = customerCoords(order);
+    if (order.status === 'assigned') return { lat: restaurant.lat, lng: restaurant.lng, live: false };
+    if (order.status === 'picked_up' && dest) {
+        const start = order.pickedAt || Date.now();
+        const fraction = Math.min(0.95, Math.max(0.1, (Date.now() - start) / (12 * 60 * 1000)));
+        return {
+            lat: restaurant.lat + (dest.lat - restaurant.lat) * fraction,
+            lng: restaurant.lng + (dest.lng - restaurant.lng) * fraction,
+            live: false,
+        };
+    }
+    if (order.status === 'delivered' && dest) return { lat: dest.lat, lng: dest.lng, live: false };
+    return { lat: restaurant.lat, lng: restaurant.lng, live: false };
+}
+
+app.put('/api/driver/location', auth(['driver']), (req, res) => {
+    const lat = Number((req.body || {}).lat);
+    const lng = Number((req.body || {}).lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return res.status(400).json({ error: 'Coordenadas invÃÂ¡lidas.' });
+    }
+    db.driverLocations[req.user.id] = { lat, lng, updatedAt: Date.now() };
+    save();
+    res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------- paneles
+app.get('/api/dashboard/restaurant', auth(['restaurant']), (req, res) => {
+    const restaurant = restaurantById(req.user.restaurantId);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    const orders = db.orders.filter((o) => o.restaurantId === restaurant.id);
+    const start = todayStart();
+    const deliveredToday = orders.filter((o) => o.status === 'delivered' && o.deliveredAt >= start);
+    res.json({
+        restaurant,
+        stats: {
+            ordersToday: orders.filter((o) => o.createdAt >= start).length,
+            deliveredToday: deliveredToday.length,
+            salesToday: money(deliveredToday.reduce((sum, o) => sum + o.subtotal, 0)),
+            commissionToday: money(deliveredToday.reduce((sum, o) => sum + o.platformFee, 0)),
+            active: orders.filter((o) => ['pending', 'accepted', 'preparing', 'ready', 'assigned', 'picked_up'].includes(o.status)).length,
+            menuCount: restaurant.menu.length
+        },
+        activeOrders: orders
+            .filter((o) => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status))
+            .sort((a, b) => a.createdAt - b.createdAt)
+            .map(orderView),
+        recentOrders: orders
+            .filter((o) => ['delivered', 'cancelled'].includes(o.status))
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 12)
+            .map(orderView)
+    });
+});
+
+app.get('/api/admin/stats', auth(['admin']), (_req, res) => {
+    const start = todayStart();
+    const deliveredToday = db.orders.filter((o) => o.status === 'delivered' && o.deliveredAt >= start);
+    const deliveryCommission = deliveredToday.reduce((sum, o) => sum + (o.deliveryPlatformFee || 0), 0);
+    const totalCommission = deliveredToday.reduce((sum, o) => sum + (o.platformFee || 0), 0);
+    res.json({
+        stats: {
+            customers: db.users.filter((u) => u.role === 'customer').length,
+            drivers: db.users.filter((u) => u.role === 'driver').length,
+            restaurants: db.restaurants.length,
+            pendingRestaurants: db.restaurants.filter((r) => !r.approved).length,
+            ordersToday: db.orders.filter((o) => o.createdAt >= start).length,
+            activeOrders: db.orders.filter((o) => ['pending', 'accepted', 'preparing', 'ready', 'assigned', 'picked_up'].includes(o.status)).length,
+            gmvToday: money(deliveredToday.reduce((sum, o) => sum + o.total, 0)),
+            commissionToday: money(totalCommission),
+            foodCommissionToday: money(totalCommission - deliveryCommission),
+            deliveryCommissionToday: money(deliveryCommission),
+            deliveredToday: deliveredToday.length,
+            avgDeliveryFee: deliveredToday.length
+                ? money(deliveredToday.reduce((sum, o) => sum + (o.deliveryFee || 0), 0) / deliveredToday.length)
+                : 0
+        },
+        settings: db.settings,
+        pendingRestaurants: db.restaurants.filter((r) => !r.approved),
+        recentOrders: db.orders.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 15).map(orderView)
+    });
+});
+
+app.put('/api/admin/settings', auth(['admin']), (req, res) => {
+    const body = req.body || {};
+    const rawCommission = Number(body.commissionPct);
+    if (Number.isFinite(rawCommission)) {
+        const pct = rawCommission > 1 ? rawCommission / 100 : rawCommission;
+        db.settings.commissionPct = Math.min(0.5, Math.max(0, pct));
+    }
+
+    const delivery = body.delivery || {};
+    db.settings.delivery = db.settings.delivery || {};
+    const current = db.settings.delivery;
+    const numeric = (key, min, max) => {
+        const value = Number(delivery[key]);
+        if (Number.isFinite(value)) current[key] = Math.min(max, Math.max(min, value));
+    };
+    numeric('baseFee', 0, 200);
+    numeric('perKm', 0, 100);
+    numeric('minFee', 0, 300);
+    numeric('maxFee', 0, 500);
+    numeric('maxRadiusKm', 1, 500);
+    if (current.maxFee < current.minFee) current.maxFee = current.minFee;
+
+    const share = Number(delivery.driverSharePct);
+    if (Number.isFinite(share)) {
+        current.driverSharePct = Math.min(1, Math.max(0, share > 1 ? share / 100 : share));
+    }
+
+    save();
+    res.json({ settings: db.settings, message: 'ConfiguraciÃÂ³n actualizada.' });
+});
+
+app.put('/api/admin/password', auth(['admin']), (req, res) => {
+    const body = req.body || {};
+    const currentPassword = String(body.currentPassword || '');
+    const newPassword = String(body.newPassword || '');
+    if (!verifyPassword(currentPassword, req.user.passwordHash)) {
+        return res.status(400).json({ error: 'La contraseÃÂ±a actual no es correcta.' });
+    }
+    if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'La nueva contraseÃÂ±a debe tener al menos 8 caracteres.' });
+    }
+    req.user.passwordHash = hashPassword(newPassword);
+    save();
+    res.json({ message: 'ContraseÃÂ±a de administrador actualizada.' });
+});
+
+app.get('/api/admin/restaurants', auth(['admin']), (_req, res) => {
+    res.json({ restaurants: db.restaurants });
+});
+
+app.post('/api/admin/restaurants/:id/approve', auth(['admin']), (req, res) => {
+    const restaurant = restaurantById(req.params.id);
+    if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
+    restaurant.approved = (req.body || {}).approved !== false;
+    if (!restaurant.approved) restaurant.isOpen = false;
+    save();
+
+    void notify(
+        restaurantEmailOf(restaurant),
+        restaurant.approved ? `Ã¢ÂÂ VelozEat ÃÂ· ${restaurant.name} aprobado` : `Ã°ÂÂÂ« VelozEat ÃÂ· ${restaurant.name} bloqueado`,
+        restaurant.approved
+            ? `Tu restaurante ${restaurant.name} ya estÃÂ¡ aprobado y visible para los clientes en VelozEat.`
+            : `Tu restaurante ${restaurant.name} fue bloqueado por el equipo de VelozEat.`
+    );
+
+    res.json({
+        restaurant,
+        message: restaurant.approved ? 'Restaurante aprobado y visible.' : 'Restaurante bloqueado.'
+    });
+});
+
+app.get('/api/admin/orders', auth(['admin']), (_req, res) => {
+    const orders = db.orders.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 200).map(orderView);
+    res.json({ orders });
+});
+
+// ---------------------------------------------------------------- web / errores
+const adminDir = path.join(__dirname, 'admin');
+app.use('/admin', express.static(adminDir));
+app.get(['/admin', '/admin/'], (_req, res) => res.sendFile(path.join(adminDir, 'index.html')));
+
+const webBuild = path.join(__dirname, '..', 'mobile', 'build', 'web');
+if (fs.existsSync(webBuild)) {
+    app.use(express.static(webBuild));
+    app.get(/^\/(?!api).*/, (_req, res) => res.sendFile(path.join(webBuild, 'index.html')));
+} else {
+    app.get('/', (_req, res) => {
+        res.json({
+            app: 'VelozEat API',
+            status: 'online',
+            docs: 'Consulta velozeat/README.md',
+            endpoints: ['/api/health', '/api/auth/login', '/api/restaurants', '/api/orders']
+        });
+    });
+}
+
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
+
+app.use((err, _req, res, _next) => {
+    console.error(err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+});
+
+
+// ---------------------------------------------------------------- cupones admin
+app.get('/api/admin/coupons', auth(['admin']), (_req, res) => {
+    res.json({ coupons: db.coupons || [] });
+});
+
+app.post('/api/admin/coupons', auth(['admin']), (req, res) => {
+    const body = req.body || {};
+    const code = String(body.code || '').trim().toUpperCase();
+    if (code.length < 3) return res.status(400).json({ error: 'El cÃÂ³digo debe tener al menos 3 caracteres.' });
+    if (findCoupon(code)) return res.status(409).json({ error: 'Ya existe un cupÃÂ³n con ese cÃÂ³digo.' });
+    const coupon = {
+        id: uid(),
+        code,
+        type: ['percent', 'fixed'].includes(body.type) ? body.type : 'percent',
+        value: Math.max(0, Number(body.value) || 0),
+        minOrder: Math.max(0, Number(body.minOrder) || 0),
+        maxDiscount: body.maxDiscount == null ? null : Math.max(0, Number(body.maxDiscount)),
+        active: body.active !== false,
+        expiresAt: body.expiresAt ? Number(body.expiresAt) : Date.now() + 30*24*60*60*1000,
+        usageLimit: Math.max(1, Number(body.usageLimit) || 100),
+        usedCount: 0,
+        createdAt: Date.now()
+    };
+    db.coupons = db.coupons || [];
+    db.coupons.push(coupon);
+    save();
+    res.status(201).json({ coupon, message: 'CupÃÂ³n creado.' });
+});
+
+app.delete('/api/admin/coupons/:id', auth(['admin']), (req, res) => {
+    const idx = (db.coupons || []).findIndex((c) => c.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'CupÃÂ³n no encontrado.' });
+    db.coupons.splice(idx, 1);
+    save();
+    res.json({ message: 'CupÃÂ³n eliminado.' });
+});
+
+
+// ---------------------------------------------------------------- chat
+app.get('/api/orders/:id/messages', auth(), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes ver este chat.' });
+    const list = (db.messages || [])
+        .filter((m) => m.orderId === order.id)
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((m) => ({
+            id: m.id,
+            orderId: m.orderId,
+            senderId: m.senderId,
+            senderName: (db.users.find((u) => u.id === m.senderId) || {}).name || 'Usuario',
+            senderRole: m.senderRole,
+            text: m.text,
+            createdAt: m.createdAt
+        }));
+    res.json({ messages: list });
+});
+
+app.post('/api/orders/:id/messages', auth(), (req, res) => {
+    const order = db.orders.find((o) => o.id === req.params.id);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes enviar mensajes aquÃ­.' });
+    const text = String((req.body || {}).text || '').trim();
+    if (text.length < 1) return res.status(400).json({ error: 'Escribe un mensaje.' });
+    const msg = {
+        id: uid(),
+        orderId: order.id,
+        senderId: req.user.id,
+        senderRole: req.user.role,
+        text,
+        createdAt: Date.now()
+    };
+    db.messages = db.messages || [];
+    db.messages.push(msg);
+    // notify the other party
+    const recipients = [];
+    if (req.user.role !== 'customer') recipients.push(order.customerId);
+    if (req.user.role !== 'restaurant') {
+        const r = (db.users.find((u) => u.restaurantId === order.restaurantId && u.role === 'restaurant') || {}).id;
+        if (r) recipients.push(r);
+    }
+    if (req.user.role !== 'driver' && order.driverId) recipients.push(order.driverId);
+    [...new Set(recipients)].filter((id) => id && id !== req.user.id).forEach((id) => {
+        pushNotification(id, 'Nuevo mensaje', `${req.user.name}: ${text}`);
+    });
+    save();
+    res.status(201).json({ message: msg });
+});
+
+// ---------------------------------------------------------------- notificaciones
+app.get('/api/notifications', auth(), (req, res) => {
+    const list = (db.notifications || [])
+        .filter((n) => n.userId === req.user.id)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 50);
+    res.json({ notifications: list });
+});
+
+app.post('/api/notifications/:id/read', auth(), (req, res) => {
+    const n = (db.notifications || []).find((x) => x.id === req.params.id && x.userId === req.user.id);
+    if (!n) return res.status(404).json({ error: 'NotificaciÃ³n no encontrada.' });
+    n.read = true;
+    save();
+    res.json({ notification: n });
+});
+
+
+// ---------------------------------------------------------------- billetera
+app.get('/api/wallet', auth(['customer']), (req, res) => {
+    res.json({ balance: money(req.user.walletBalance || 0) });
+});
+
+app.post('/api/wallet/topup', auth(['customer']), (req, res) => {
+    const amount = Math.max(1, Math.min(10000, Number((req.body || {}).amount) || 0));
+    if (!(amount > 0)) return res.status(400).json({ error: 'Monto inválido.' });
+    req.user.walletBalance = money((req.user.walletBalance || 0) + amount);
+    save();
+    res.json({ balance: money(req.user.walletBalance), message: `Se agregaron $${amount} a tu billetera.` });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Ã¢ÂÂ¡ VelozEat API escuchando en http://localhost:${PORT}`);
+    console.log(`   Restaurantes: ${db.restaurants.length} | Usuarios: ${db.users.length} | Pedidos: ${db.orders.length}`);
+});
