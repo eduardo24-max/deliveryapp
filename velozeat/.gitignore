@@ -1,0 +1,15 @@
+# Datos locales del backend (se regeneran al arrancar)
+backend/data.json
+
+# Secretos del backend (correo, tokens)
+backend/.env
+
+# Dependencias y artefactos de Node
+node_modules/
+
+# Artefactos de Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies
+mobile/android/.gradle/
+mobile/android/local.properties

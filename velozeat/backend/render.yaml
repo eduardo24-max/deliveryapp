@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: velozeat-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: VELOZEAT_SECRET
+        generateValue: true
+      - key: VELOZEAT_SMTP_HOST
+        sync: false
+      - key: VELOZEAT_SMTP_PORT
+        sync: false
+      - key: VELOZEAT_SMTP_USER
+        sync: false
+      - key: VELOZEAT_SMTP_PASS
+        sync: false
+      - key: VELOZEAT_SMTP_FROM
+        sync: false
