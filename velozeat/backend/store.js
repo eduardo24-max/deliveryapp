@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = process.env.VELOZEAT_DATA_FILE || path.join(__dirname, 'data.json');
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
     const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
@@ -24,12 +24,12 @@ const HOUR = 60 * 60 * 1000;
 const DEFAULT_ZONES = [
     { id: 'z-centro', name: 'Centro / Reforma', lat: 19.4326, lng: -99.1332 },
     { id: 'z-roma', name: 'Roma / Condesa', lat: 19.4148, lng: -99.1650 },
-    { id: 'z-juarez', name: 'JuÃÂ¡rez / Zona Rosa', lat: 19.4260, lng: -99.1600 },
+    { id: 'z-juarez', name: 'JuÃÂÃÂ¡rez / Zona Rosa', lat: 19.4260, lng: -99.1600 },
     { id: 'z-guerrero', name: 'Guerrero', lat: 19.4450, lng: -99.1480 },
     { id: 'z-delvalle', name: 'Del Valle', lat: 19.3800, lng: -99.1650 },
     { id: 'z-narvarte', name: 'Narvarte', lat: 19.3900, lng: -99.1500 },
     { id: 'z-polanco', name: 'Polanco', lat: 19.4330, lng: -99.1990 },
-    { id: 'z-coyoacan', name: 'CoyoacÃÂ¡n', lat: 19.3500, lng: -99.1620 }
+    { id: 'z-coyoacan', name: 'CoyoacÃÂÃÂ¡n', lat: 19.3500, lng: -99.1620 }
 ];
 
 const DEFAULT_DELIVERY = {
@@ -128,7 +128,7 @@ function migrate(data) {
             changed = true;
         }
         if (order.deliveryPlatformFee === undefined) {
-            // Pedidos anteriores al cobro por distancia: no tenÃÂ­an comisiÃÂ³n de envÃÂ­o.
+            // Pedidos anteriores al cobro por distancia: no tenÃÂÃÂ­an comisiÃÂÃÂ³n de envÃÂÃÂ­o.
             order.deliveryPlatformFee = 0;
             changed = true;
         }
@@ -152,12 +152,12 @@ function seed() {
             zoneId: 'z-centro', createdAt: now
         },
         {
-            id: 'u-cust-2', name: 'Luis RamÃÂ­rez', email: 'luis@velozeat.com', phone: '5554445566',
+            id: 'u-cust-2', name: 'Luis RamÃÂÃÂ­rez', email: 'luis@velozeat.com', phone: '5554445566',
             role: 'customer', passwordHash: hashPassword('cliente123'), address: 'Calle Hidalgo 45, Col. Roma',
             zoneId: 'z-roma', createdAt: now
         },
         {
-            id: 'u-rest-1', name: 'MarÃÂ­a Fuentes', email: 'taqueria@velozeat.com', phone: '5557778899',
+            id: 'u-rest-1', name: 'MarÃÂÃÂ­a Fuentes', email: 'taqueria@velozeat.com', phone: '5557778899',
             role: 'restaurant', restaurantId: 'r-tacos', passwordHash: hashPassword('restaurante123'), createdAt: now
         },
         {
@@ -165,107 +165,107 @@ function seed() {
             role: 'restaurant', restaurantId: 'r-sushi', passwordHash: hashPassword('restaurante123'), createdAt: now
         },
         {
-            id: 'u-rest-3', name: 'Carla MÃÂ©ndez', email: 'burger@velozeat.com', phone: '5553334455',
+            id: 'u-rest-3', name: 'Carla MÃÂÃÂ©ndez', email: 'burger@velozeat.com', phone: '5553334455',
             role: 'restaurant', restaurantId: 'r-burger', passwordHash: hashPassword('restaurante123'), createdAt: now
         },
         {
-            id: 'u-driver-1', name: 'Diego LÃÂ³pez', email: 'repartidor@velozeat.com', phone: '5559990011',
+            id: 'u-driver-1', name: 'Diego LÃÂÃÂ³pez', email: 'repartidor@velozeat.com', phone: '5559990011',
             role: 'driver', passwordHash: hashPassword('repartidor123'), createdAt: now
         },
         {
-            id: 'u-driver-2', name: 'SofÃÂ­a Cruz', email: 'sofia@velozeat.com', phone: '5558880022',
+            id: 'u-driver-2', name: 'SofÃÂÃÂ­a Cruz', email: 'sofia@velozeat.com', phone: '5558880022',
             role: 'driver', passwordHash: hashPassword('repartidor123'), createdAt: now
         }
     ];
 
     const restaurants = [
         {
-            id: 'r-tacos', ownerId: 'u-rest-1', name: 'TaquerÃÂ­a El Fuego', category: 'Tacos', emoji: 'Ã°ÂÂÂ®',
-            color: '#F97316', description: 'Tacos al pastor, gringas y salsas de la casa. Fuego lento, sabor rÃÂ¡pido.',
-            address: 'Av. JuÃÂ¡rez 220, Centro', lat: 19.4326, lng: -99.1332,
+            id: 'r-tacos', ownerId: 'u-rest-1', name: 'TaquerÃÂÃÂ­a El Fuego', category: 'Tacos', emoji: 'ÃÂ°ÃÂÃÂÃÂ®',
+            color: '#F97316', description: 'Tacos al pastor, gringas y salsas de la casa. Fuego lento, sabor rÃÂÃÂ¡pido.',
+            address: 'Av. JuÃÂÃÂ¡rez 220, Centro', lat: 19.4326, lng: -99.1332,
             rating: 4.8, ratingCount: 312, deliveryFee: 15, minOrder: 80,
             etaMinutes: 25, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-taco-1', 'Tacos al pastor (3)', 'Cerdo marinado, piÃÂ±a, cebolla y cilantro', 45, 'Tacos', 'Ã°ÂÂÂ®'),
-                item('m-taco-2', 'Tacos de bistec (3)', 'Res a la plancha con cebolla asada', 49, 'Tacos', 'Ã°ÂÂ¥Â©'),
-                item('m-taco-3', 'Gringa de pastor', 'Tortilla de harina, queso y pastor', 75, 'Tacos', 'Ã°ÂÂ«Â'),
-                item('m-taco-4', 'Quesadilla mixta', 'Queso Oaxaca, pollo y champinones', 55, 'Antojitos', 'Ã°ÂÂ§Â'),
-                item('m-taco-5', 'Nachos El Fuego', 'Totopos, frijol, queso, jalapeno y crema', 60, 'Antojitos', 'Ã°ÂÂ§Â'),
-                item('m-taco-6', 'Horchata 1L', 'Agua de horchata artesanal', 30, 'Bebidas', 'Ã°ÂÂ¥Â¤'),
-                item('m-taco-7', 'Agua de jamaica 1L', 'Jamaica natural, poco azucar', 25, 'Bebidas', 'Ã°ÂÂÂ¹'),
-                item('m-taco-8', 'Flan napolitano', 'Casero con caramelo', 35, 'Postres', 'Ã°ÂÂÂ®')
+                item('m-taco-1', 'Tacos al pastor (3)', 'Cerdo marinado, piÃÂÃÂ±a, cebolla y cilantro', 45, 'Tacos', 'ÃÂ°ÃÂÃÂÃÂ®'),
+                item('m-taco-2', 'Tacos de bistec (3)', 'Res a la plancha con cebolla asada', 49, 'Tacos', 'ÃÂ°ÃÂÃÂ¥ÃÂ©'),
+                item('m-taco-3', 'Gringa de pastor', 'Tortilla de harina, queso y pastor', 75, 'Tacos', 'ÃÂ°ÃÂÃÂ«ÃÂ'),
+                item('m-taco-4', 'Quesadilla mixta', 'Queso Oaxaca, pollo y champinones', 55, 'Antojitos', 'ÃÂ°ÃÂÃÂ§ÃÂ'),
+                item('m-taco-5', 'Nachos El Fuego', 'Totopos, frijol, queso, jalapeno y crema', 60, 'Antojitos', 'ÃÂ°ÃÂÃÂ§ÃÂ'),
+                item('m-taco-6', 'Horchata 1L', 'Agua de horchata artesanal', 30, 'Bebidas', 'ÃÂ°ÃÂÃÂ¥ÃÂ¤'),
+                item('m-taco-7', 'Agua de jamaica 1L', 'Jamaica natural, poco azucar', 25, 'Bebidas', 'ÃÂ°ÃÂÃÂÃÂ¹'),
+                item('m-taco-8', 'Flan napolitano', 'Casero con caramelo', 35, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ®')
             ]
         },
         {
-            id: 'r-sushi', ownerId: 'u-rest-2', name: 'Sushi Zen', category: 'Sushi', emoji: 'Ã°ÂÂÂ£',
-            color: '#0EA5E9', description: 'Rolls frescos, ramen caliente y tÃÂ© verde. Cocina japonesa al momento.',
+            id: 'r-sushi', ownerId: 'u-rest-2', name: 'Sushi Zen', category: 'Sushi', emoji: 'ÃÂ°ÃÂÃÂÃÂ£',
+            color: '#0EA5E9', description: 'Rolls frescos, ramen caliente y tÃÂÃÂ© verde. Cocina japonesa al momento.',
             address: 'Blvd. Marina 88, Local 4', lat: 19.4380, lng: -99.1500,
             rating: 4.7, ratingCount: 198, deliveryFee: 25, minOrder: 150,
             etaMinutes: 35, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-sushi-1', 'Sushi roll zen (8pz)', 'Salmon, aguacate, queso crema y ajonjoli', 120, 'Sushi', 'Ã°ÂÂÂ£'),
-                item('m-sushi-2', 'California roll (8pz)', 'Surimi, pepino y aguacate', 110, 'Sushi', 'Ã°ÂÂÂ±'),
-                item('m-sushi-3', 'Nigiri mix (5pz)', 'Salmon, atun y camarÃÂ³n', 95, 'Sushi', 'Ã°ÂÂÂ¤'),
-                item('m-sushi-4', 'Ramen tonkotsu', 'Caldo de cerdo, huevo, naruto y cebollin', 130, 'Calientes', 'Ã°ÂÂÂ'),
-                item('m-sushi-5', 'Edamame', 'Vainas de soya con sal de mar', 55, 'Entradas', 'Ã°ÂÂ«Â'),
-                item('m-sushi-6', 'TÃÂ© verde caliente', 'Sencha japonÃÂ©s', 30, 'Bebidas', 'Ã°ÂÂÂµ'),
-                item('m-sushi-7', 'Mochi de matcha', 'Dos piezas de mochi relleno', 45, 'Postres', 'Ã°ÂÂÂ¡')
+                item('m-sushi-1', 'Sushi roll zen (8pz)', 'Salmon, aguacate, queso crema y ajonjoli', 120, 'Sushi', 'ÃÂ°ÃÂÃÂÃÂ£'),
+                item('m-sushi-2', 'California roll (8pz)', 'Surimi, pepino y aguacate', 110, 'Sushi', 'ÃÂ°ÃÂÃÂÃÂ±'),
+                item('m-sushi-3', 'Nigiri mix (5pz)', 'Salmon, atun y camarÃÂÃÂ³n', 95, 'Sushi', 'ÃÂ°ÃÂÃÂÃÂ¤'),
+                item('m-sushi-4', 'Ramen tonkotsu', 'Caldo de cerdo, huevo, naruto y cebollin', 130, 'Calientes', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-sushi-5', 'Edamame', 'Vainas de soya con sal de mar', 55, 'Entradas', 'ÃÂ°ÃÂÃÂ«ÃÂ'),
+                item('m-sushi-6', 'TÃÂÃÂ© verde caliente', 'Sencha japonÃÂÃÂ©s', 30, 'Bebidas', 'ÃÂ°ÃÂÃÂÃÂµ'),
+                item('m-sushi-7', 'Mochi de matcha', 'Dos piezas de mochi relleno', 45, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ¡')
             ]
         },
         {
-            id: 'r-burger', ownerId: 'u-rest-3', name: 'Burger Lab', category: 'Hamburguesas', emoji: 'Ã°ÂÂÂ',
+            id: 'r-burger', ownerId: 'u-rest-3', name: 'Burger Lab', category: 'Hamburguesas', emoji: 'ÃÂ°ÃÂÃÂÃÂ',
             color: '#DC2626', description: 'Carne 100% res, pan brioche y salsas de autor. Ciencia del sabor.',
-            address: 'Calle FÃÂ­sica 12, Col. Centro', lat: 19.4300, lng: -99.1400,
+            address: 'Calle FÃÂÃÂ­sica 12, Col. Centro', lat: 19.4300, lng: -99.1400,
             rating: 4.6, ratingCount: 421, deliveryFee: 20, minOrder: 100,
             etaMinutes: 30, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-burger-1', 'ClÃÂ¡sica Lab', 'Res 150g, queso americano, lechuga y tomate', 95, 'Hamburguesas', 'Ã°ÂÂÂ'),
-                item('m-burger-2', 'Doble queso', 'Dos carnes, doble queso y tocino', 135, 'Hamburguesas', 'Ã°ÂÂÂ'),
-                item('m-burger-3', 'Papas rÃÂºsticas', 'Papas con paprika y alioli', 45, 'Extras', 'Ã°ÂÂÂ'),
-                item('m-burger-4', 'Alitas BBQ (8pz)', 'Alitas glaseadas con BBQ de la casa', 120, 'Extras', 'Ã°ÂÂÂ'),
-                item('m-burger-5', 'Malteada de chocolate', 'Helado, leche y chocolate belga', 55, 'Bebidas', 'Ã°ÂÂ¥Â¤'),
-                item('m-burger-6', 'Brownie con helado', 'Brownie tibio y helado de vainilla', 50, 'Postres', 'Ã°ÂÂÂ«')
+                item('m-burger-1', 'ClÃÂÃÂ¡sica Lab', 'Res 150g, queso americano, lechuga y tomate', 95, 'Hamburguesas', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-burger-2', 'Doble queso', 'Dos carnes, doble queso y tocino', 135, 'Hamburguesas', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-burger-3', 'Papas rÃÂÃÂºsticas', 'Papas con paprika y alioli', 45, 'Extras', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-burger-4', 'Alitas BBQ (8pz)', 'Alitas glaseadas con BBQ de la casa', 120, 'Extras', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-burger-5', 'Malteada de chocolate', 'Helado, leche y chocolate belga', 55, 'Bebidas', 'ÃÂ°ÃÂÃÂ¥ÃÂ¤'),
+                item('m-burger-6', 'Brownie con helado', 'Brownie tibio y helado de vainilla', 50, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ«')
             ]
         },
         {
-            id: 'r-pizza', ownerId: 'u-rest-3', name: 'PizzerÃÂ­a Roma', category: 'Pizza', emoji: 'Ã°ÂÂÂ',
+            id: 'r-pizza', ownerId: 'u-rest-3', name: 'PizzerÃÂÃÂ­a Roma', category: 'Pizza', emoji: 'ÃÂ°ÃÂÃÂÃÂ',
             color: '#16A34A', description: 'Masa madre, horno de piedra y ingredientes italianos.',
-            address: 'Av. ÃÂlvaro ObregÃÂ³n 301, Roma Norte', lat: 19.4160, lng: -99.1600,
+            address: 'Av. ÃÂÃÂlvaro ObregÃÂÃÂ³n 301, Roma Norte', lat: 19.4160, lng: -99.1600,
             rating: 4.9, ratingCount: 156, deliveryFee: 25,
             minOrder: 120, etaMinutes: 35, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-pizza-1', 'Pizza margarita', 'Salsa de tomate, mozzarella y albahaca', 150, 'Pizza', 'Ã°ÂÂÂ'),
-                item('m-pizza-2', 'Pizza pepperoni', 'Pepperoni, mozzarella y orÃÂ©gano', 180, 'Pizza', 'Ã°ÂÂÂ'),
-                item('m-pizza-3', 'Pizza hawaiana', 'Jamon, piÃÂ±a y mozzarella', 170, 'Pizza', 'Ã°ÂÂÂ'),
-                item('m-pizza-4', 'Pan de ajo', 'Con mantequilla de ajo y perejil', 45, 'Entradas', 'Ã°ÂÂ¥Â'),
-                item('m-pizza-5', 'Refresco 600ml', 'Bien frÃÂ­o', 30, 'Bebidas', 'Ã°ÂÂ¥Â¤')
+                item('m-pizza-1', 'Pizza margarita', 'Salsa de tomate, mozzarella y albahaca', 150, 'Pizza', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-pizza-2', 'Pizza pepperoni', 'Pepperoni, mozzarella y orÃÂÃÂ©gano', 180, 'Pizza', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-pizza-3', 'Pizza hawaiana', 'Jamon, piÃÂÃÂ±a y mozzarella', 170, 'Pizza', 'ÃÂ°ÃÂÃÂÃÂ'),
+                item('m-pizza-4', 'Pan de ajo', 'Con mantequilla de ajo y perejil', 45, 'Entradas', 'ÃÂ°ÃÂÃÂ¥ÃÂ'),
+                item('m-pizza-5', 'Refresco 600ml', 'Bien frÃÂÃÂ­o', 30, 'Bebidas', 'ÃÂ°ÃÂÃÂ¥ÃÂ¤')
             ]
         },
         {
-            id: 'r-antojitos', ownerId: 'u-rest-1', name: 'Antojitos DoÃÂ±a Luz', category: 'Antojitos', emoji: 'Ã°ÂÂ«Â',
-            color: '#DB2777', description: 'Tamales, pozole y sopes como los de casa. TradiciÃÂ³n de barrio.',
+            id: 'r-antojitos', ownerId: 'u-rest-1', name: 'Antojitos DoÃÂÃÂ±a Luz', category: 'Antojitos', emoji: 'ÃÂ°ÃÂÃÂ«ÃÂ',
+            color: '#DB2777', description: 'Tamales, pozole y sopes como los de casa. TradiciÃÂÃÂ³n de barrio.',
             address: 'Calle Morelos 55, Col. Guerrero', lat: 19.4450, lng: -99.1480,
             rating: 4.5, ratingCount: 89, deliveryFee: 10,
             minOrder: 60, etaMinutes: 20, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-ant-1', 'Tamales (3)', 'Verde, rojo y dulce', 35, 'Tamales', 'Ã°ÂÂ«Â'),
-                item('m-ant-2', 'Pozole rojo', 'Con tostadas, orÃÂ©gano y limÃÂ³n', 90, 'Calientes', 'Ã°ÂÂÂ²'),
-                item('m-ant-3', 'Enchiladas verdes', 'Pollo, crema y queso fresco', 75, 'Calientes', 'Ã°ÂÂÂ¯'),
-                item('m-ant-4', 'Sopes (4)', 'Frijol, salsa, queso y crema', 50, 'Antojitos', 'Ã°ÂÂ«Â'),
-                item('m-ant-5', 'Agua fresca 1L', 'Del dÃÂ­a', 25, 'Bebidas', 'Ã°ÂÂ¥Â¤')
+                item('m-ant-1', 'Tamales (3)', 'Verde, rojo y dulce', 35, 'Tamales', 'ÃÂ°ÃÂÃÂ«ÃÂ'),
+                item('m-ant-2', 'Pozole rojo', 'Con tostadas, orÃÂÃÂ©gano y limÃÂÃÂ³n', 90, 'Calientes', 'ÃÂ°ÃÂÃÂÃÂ²'),
+                item('m-ant-3', 'Enchiladas verdes', 'Pollo, crema y queso fresco', 75, 'Calientes', 'ÃÂ°ÃÂÃÂÃÂ¯'),
+                item('m-ant-4', 'Sopes (4)', 'Frijol, salsa, queso y crema', 50, 'Antojitos', 'ÃÂ°ÃÂÃÂ«ÃÂ'),
+                item('m-ant-5', 'Agua fresca 1L', 'Del dÃÂÃÂ­a', 25, 'Bebidas', 'ÃÂ°ÃÂÃÂ¥ÃÂ¤')
             ]
         },
         {
-            id: 'r-dulce', ownerId: 'u-rest-3', name: 'Dulce Veloz', category: 'Postres', emoji: 'Ã°ÂÂÂ°',
-            color: '#A855F7', description: 'Pasteles, churros y cafÃÂ© para cerrar con algo dulce.',
-            address: 'Calle Dulce 8, Col. JuÃÂ¡rez', lat: 19.4260, lng: -99.1600,
+            id: 'r-dulce', ownerId: 'u-rest-3', name: 'Dulce Veloz', category: 'Postres', emoji: 'ÃÂ°ÃÂÃÂÃÂ°',
+            color: '#A855F7', description: 'Pasteles, churros y cafÃÂÃÂ© para cerrar con algo dulce.',
+            address: 'Calle Dulce 8, Col. JuÃÂÃÂ¡rez', lat: 19.4260, lng: -99.1600,
             rating: 4.8, ratingCount: 64, deliveryFee: 15,
             minOrder: 50, etaMinutes: 20, isOpen: true, approved: true, createdAt: now,
             menu: [
-                item('m-dulce-1', 'Rebanada de pastel', 'Chocolate, tres leches o red velvet', 55, 'Postres', 'Ã°ÂÂÂ°'),
-                item('m-dulce-2', 'Churros (5)', 'Con azÃÂºcar y cajeta', 40, 'Postres', 'Ã°ÂÂÂ©'),
-                item('m-dulce-3', 'Gelatina de mosaico', 'Casera', 25, 'Postres', 'Ã°ÂÂÂ®'),
-                item('m-dulce-4', 'CafÃÂ© americano', 'Grano de la casa', 30, 'Bebidas', 'Ã¢ÂÂ')
+                item('m-dulce-1', 'Rebanada de pastel', 'Chocolate, tres leches o red velvet', 55, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ°'),
+                item('m-dulce-2', 'Churros (5)', 'Con azÃÂÃÂºcar y cajeta', 40, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ©'),
+                item('m-dulce-3', 'Gelatina de mosaico', 'Casera', 25, 'Postres', 'ÃÂ°ÃÂÃÂÃÂ®'),
+                item('m-dulce-4', 'CafÃÂÃÂ© americano', 'Grano de la casa', 30, 'Bebidas', 'ÃÂ¢ÃÂÃÂ')
             ]
         }
     ];
@@ -275,8 +275,8 @@ function seed() {
             id: 'o-seed-1', code: '1042', securityCode: '4821', customerId: 'u-cust-1', restaurantId: 'r-tacos',
             driverId: 'u-driver-1', status: 'delivered', paymentMethod: 'cash',
             items: [
-                { itemId: 'm-taco-1', name: 'Tacos al pastor (3)', emoji: 'Ã°ÂÂÂ®', price: 45, qty: 2 },
-                { itemId: 'm-taco-6', name: 'Horchata 1L', emoji: 'Ã°ÂÂ¥Â¤', price: 30, qty: 1 }
+                { itemId: 'm-taco-1', name: 'Tacos al pastor (3)', emoji: 'ÃÂ°ÃÂÃÂÃÂ®', price: 45, qty: 2 },
+                { itemId: 'm-taco-6', name: 'Horchata 1L', emoji: 'ÃÂ°ÃÂÃÂ¥ÃÂ¤', price: 30, qty: 1 }
             ],
             subtotal: 120, deliveryFee: 15, tip: 20, total: 155, driverEarnings: 35, platformFee: 18,
             address: 'Av. Reforma 123, Col. Centro', notes: 'Sin cebolla por favor',
@@ -287,8 +287,8 @@ function seed() {
             id: 'o-seed-2', code: '1043', securityCode: '7734', customerId: 'u-cust-2', restaurantId: 'r-sushi',
             driverId: 'u-driver-2', status: 'delivered', paymentMethod: 'card',
             items: [
-                { itemId: 'm-sushi-1', name: 'Sushi roll zen (8pz)', emoji: 'Ã°ÂÂÂ£', price: 120, qty: 1 },
-                { itemId: 'm-sushi-6', name: 'TÃÂ© verde caliente', emoji: 'Ã°ÂÂÂµ', price: 30, qty: 2 }
+                { itemId: 'm-sushi-1', name: 'Sushi roll zen (8pz)', emoji: 'ÃÂ°ÃÂÃÂÃÂ£', price: 120, qty: 1 },
+                { itemId: 'm-sushi-6', name: 'TÃÂÃÂ© verde caliente', emoji: 'ÃÂ°ÃÂÃÂÃÂµ', price: 30, qty: 2 }
             ],
             subtotal: 180, deliveryFee: 25, tip: 15, total: 220, driverEarnings: 40, platformFee: 27,
             address: 'Calle Hidalgo 45, Col. Roma', notes: '',
@@ -302,7 +302,7 @@ function seed() {
             brand: 'VelozEat',
             currency: 'MXN',
             commissionPct: 0.15,
-            city: 'Ciudad de MÃÂ©xico',
+            city: 'Ciudad de MÃÂÃÂ©xico',
             delivery: { ...DEFAULT_DELIVERY },
             zones: DEFAULT_ZONES.map((z) => ({ ...z }))
         },
