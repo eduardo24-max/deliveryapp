@@ -61,6 +61,10 @@ class _AuthScreenState extends State<AuthScreen> {
       await context.read<AppState>().api.resendVerification(email);
       if (mounted) showSnack(context, 'Te enviamos un nuevo correo de verificacion.');
     } on ApiException catch (e) {
+      if (e.message.toLowerCase().contains('conectar') || e.message.toLowerCase().contains('servidor')) {
+        await _configureServer();
+        return;
+      }
       if (mounted) showSnack(context, e.message, error: true);
     } finally {
       if (mounted) setState(() => _resendBusy = false);
@@ -172,7 +176,7 @@ class _AuthScreenState extends State<AuthScreen> {
         await app.api.setToken(res['token']?.toString());
         await app.refresh();
         if (mounted) showSnack(context, '¡Bienvenido de vuelta!');
-        if (mounted) showSnack(context, 'ÃÂ¡Bienvenido de vuelta!');
+        if (mounted) showSnack(context, '¡Bienvenido de vuelta!');
       } else {
         await app.register({
           'name': _name.text.trim(),
@@ -237,7 +241,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     onPressed: _configureServer,
                     icon: const Icon(Icons.settings_rounded, color: Colors.white70),
                   ),
-                  BrandBadge('Entrega rÃÂ¡pida', icon: Icons.bolt_rounded),
+                  BrandBadge('Entrega rápida', icon: Icons.bolt_rounded),
                 ],
               ),
               const SizedBox(height: 30),
@@ -275,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     const SizedBox(height: 20),
                     if (!_isLogin) ...[
-                      _label('ÃÂ¿CÃÂ³mo vas a usar VelozEat?'),
+                      _label('¿Cómo vas a usar VelozEat?'),
                       const SizedBox(height: 8),
                       _RolePicker(
                         role: _role,
@@ -299,7 +303,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: 'TelÃÂ©fono',
+                          labelText: 'Teléfono',
                           prefixIcon: Icon(Icons.phone_outlined),
                         ),
                       ),
@@ -319,7 +323,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: _category,
                         decoration: const InputDecoration(
-                          labelText: 'CategorÃÂ­a',
+                          labelText: 'Categoría',
                           prefixIcon: Icon(Icons.category_outlined),
                         ),
                         items: _categories
@@ -332,7 +336,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: _address,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: 'DirecciÃÂ³n del restaurante',
+                          labelText: 'Dirección del restaurante',
                           prefixIcon: Icon(Icons.location_on_outlined),
                         ),
                       ),
@@ -343,7 +347,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         controller: _address,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          labelText: 'Tu direcciÃÂ³n de entrega',
+                          labelText: 'Tu dirección de entrega',
                           prefixIcon: Icon(Icons.location_on_outlined),
                         ),
                       ),
@@ -353,13 +357,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       DropdownButtonFormField<String>(
                         initialValue: _vehicle,
                         decoration: const InputDecoration(
-                          labelText: 'Tu vehÃÂ­culo',
+                          labelText: 'Tu vehículo',
                           prefixIcon: Icon(Icons.two_wheeler_outlined),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'moto', child: Text('Ã°ÂÂÂµ Moto')),
-                          DropdownMenuItem(value: 'bici', child: Text('Ã°ÂÂÂ² Bicicleta')),
-                          DropdownMenuItem(value: 'auto', child: Text('Ã°ÂÂÂ Auto')),
+                          DropdownMenuItem(value: 'moto', child: Text(' Moto')),
+                          DropdownMenuItem(value: 'bici', child: Text(' Bicicleta')),
+                          DropdownMenuItem(value: 'auto', child: Text(' Auto')),
                         ],
                         onChanged: (value) => setState(() => _vehicle = value ?? 'moto'),
                       ),
@@ -370,7 +374,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                        labelText: 'Correo electrÃÂ³nico',
+                        labelText: 'Correo electrónico',
                         prefixIcon: Icon(Icons.mail_outline),
                       ),
                     ),
@@ -381,7 +385,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
-                        labelText: 'ContraseÃÂ±a',
+                        labelText: 'Contraseña',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: () => setState(() => _obscure = !_obscure),
@@ -409,7 +413,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               height: 22,
                               child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                             )
-                          : Text(_isLogin ? 'Iniciar sesiÃÂ³n' : 'Crear mi cuenta'),
+                          : Text(_isLogin ? 'Iniciar sesión' : 'Crear mi cuenta'),
                     ),
                     const SizedBox(height: 18),
                     Row(
@@ -428,14 +432,14 @@ class _AuthScreenState extends State<AuthScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _DemoChip('Ã°ÂÂÂÃ¯Â¸Â Cliente', () => _demoLogin('cliente@velozeat.com', 'cliente123')),
-                        _DemoChip('Ã°ÂÂÂ½Ã¯Â¸Â Restaurante', () => _demoLogin('taqueria@velozeat.com', 'restaurante123')),
-                        _DemoChip('Ã°ÂÂÂµ Repartidor', () => _demoLogin('repartidor@velozeat.com', 'repartidor123')),
+                        _DemoChip(' Cliente', () => _demoLogin('cliente@velozeat.com', 'cliente123')),
+                        _DemoChip(' Restaurante', () => _demoLogin('taqueria@velozeat.com', 'restaurante123')),
+                        _DemoChip(' Repartidor', () => _demoLogin('repartidor@velozeat.com', 'repartidor123')),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'AdministraciÃÂ³n privada: ${context.read<AppState>().api.baseUrl}/admin',
+                      'Administración privada: ${context.read<AppState>().api.baseUrl}/admin',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 10.5, color: kMuted),
                     ),
@@ -473,7 +477,7 @@ class _ModeSwitch extends StatelessWidget {
       decoration: BoxDecoration(color: kBg, borderRadius: BorderRadius.circular(16)),
       child: Row(
         children: [
-          _tab('Iniciar sesiÃÂ³n', isLogin, () => onChanged(true)),
+          _tab('Iniciar sesión', isLogin, () => onChanged(true)),
           _tab('Registrarme', !isLogin, () => onChanged(false)),
         ],
       ),
@@ -517,9 +521,9 @@ class _RolePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const roles = [
-      ('customer', 'Ã°ÂÂÂÃ¯Â¸Â', 'Cliente'),
-      ('restaurant', 'Ã°ÂÂÂ½Ã¯Â¸Â', 'Restaurante'),
-      ('driver', 'Ã°ÂÂÂµ', 'Repartidor'),
+      ('customer', '', 'Cliente'),
+      ('restaurant', '', 'Restaurante'),
+      ('driver', '', 'Repartidor'),
     ];
     return Row(
       children: roles.map((r) {

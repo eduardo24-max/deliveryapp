@@ -24,3 +24,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.jpeg
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/logo.jpeg"
+  adaptive_icon_background: "#FF6A00"
+  adaptive_icon_foreground: "assets/logo.jpeg"

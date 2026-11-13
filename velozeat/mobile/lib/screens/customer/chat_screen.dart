@@ -79,7 +79,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: _loading
                 ? const LoadingBox(label: 'Cargando chat...')
                 : _messages.isEmpty
-                    ? const EmptyState(emoji: '💬', title: 'Sin mensajes', subtitle: 'Inicia la conversación.')
+                    ? const EmptyState(emoji: '', title: 'Sin mensajes', subtitle: 'Inicia la conversación.')
                     : ListView.builder(
                         padding: const EdgeInsets.all(12),
                         itemCount: _messages.length,

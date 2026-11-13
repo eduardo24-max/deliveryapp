@@ -186,7 +186,7 @@ class _RestaurantShellState extends State<RestaurantShell> {
     if (_error != null && restaurant == null) {
       return Scaffold(
         body: EmptyState(
-          emoji: '📡',
+          emoji: '',
           title: 'No pudimos cargar tu panel',
           subtitle: _error!,
           action: FilledButton(
@@ -198,13 +198,15 @@ class _RestaurantShellState extends State<RestaurantShell> {
       );
     }
     if (restaurant == null) {
-      return const Scaffold(body: EmptyState(emoji: '🍽️', title: 'Restaurante no encontrado'));
+      return const Scaffold(body: EmptyState(emoji: '', title: 'Restaurante no encontrado'));
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
+            const AppLogo(size: 18),
+            const SizedBox(width: 10),
             Text(restaurant.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
             Flexible(
@@ -328,10 +330,10 @@ class _RestaurantShellState extends State<RestaurantShell> {
     final description = TextEditingController(text: item?.description ?? '');
     final price = TextEditingController(text: item == null ? '' : item.price.toStringAsFixed(0));
     final category = TextEditingController(text: item?.category ?? 'Menú');
-    String emoji = item?.emoji ?? '🍽️';
+    String emoji = item?.emoji ?? '';
     bool available = item?.available ?? true;
 
-    const emojis = ['🍽️', '🌮', '🍔', '🍕', '🍣', '🍜', '🥗', '🍟', '🍗', '🥤', '🍺', '☕', '🍰', '🍩', '🍦', '🥩', '🫔', '🍱', '🌯', '🧀'];
+    const emojis = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
 
     final save = await showDialog<bool>(
       context: context,
@@ -468,7 +470,7 @@ class _OrdersTab extends StatelessWidget {
               children: [
                 const SizedBox(height: 70),
                 EmptyState(
-                  emoji: '🧾',
+                  emoji: '',
                   title: 'No hay pedidos activos',
                   subtitle: 'Los pedidos nuevos aparecen aquí automáticamente cada 5 segundos.',
                   action: OutlinedButton(
@@ -591,7 +593,7 @@ class _RestaurantOrderCard extends StatelessWidget {
                     color: kGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('💵 Efectivo',
+                  child: const Text(' Efectivo',
                       style: TextStyle(fontSize: 10.5, color: kGreen, fontWeight: FontWeight.w800)),
                 ),
               const Spacer(),
@@ -662,7 +664,7 @@ class _MenuTab extends StatelessWidget {
             const SizedBox(height: 16),
             if (restaurant.menu.isEmpty)
               const EmptyState(
-                emoji: '📋',
+                emoji: '',
                 title: 'Tu menú está vacío',
                 subtitle: 'Agrega tu primer platillo para empezar a recibir pedidos.',
               )
@@ -840,10 +842,10 @@ class _PanelTab extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: 1.65,
             children: [
-              _StatCard(emoji: '🧾', label: 'Pedidos hoy', value: '$ordersToday'),
-              _StatCard(emoji: '💵', label: 'Ventas hoy', value: money(salesToday)),
-              _StatCard(emoji: '⚡', label: 'Comisión VelozEat', value: money(commission)),
-              _StatCard(emoji: '📋', label: 'Platillos', value: '$menuCount'),
+              _StatCard(emoji: '', label: 'Pedidos hoy', value: '$ordersToday'),
+              _StatCard(emoji: '', label: 'Ventas hoy', value: money(salesToday)),
+              _StatCard(emoji: '', label: 'Comisión VelozEat', value: money(commission)),
+              _StatCard(emoji: '', label: 'Platillos', value: '$menuCount'),
             ],
           ),
           const SizedBox(height: 18),

@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { load, save, hashPassword, verifyPassword } = require('./store');
 const mailer = require('./mailer');
+const whatsapp = require('./whatsapp');
 
 const app = express();
 const PORT = process.env.PORT || process.env.VELOZEAT_PORT || 3100;
@@ -71,8 +72,8 @@ function haversineKm(a, b) {
     return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-// El envÃÂÃÂ­o se calcula por distancia real entre el restaurante y el destino.
-// El destino puede ser una zona de entrega (zoneId) o la ubicaciÃÂÃÂ³n GPS del cliente (lat/lng).
+// El envÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o se calcula por distancia real entre el restaurante y el destino.
+// El destino puede ser una zona de entrega (zoneId) o la ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n GPS del cliente (lat/lng).
 // El factor 1.25 aproxima el recorrido real por calles.
 function deliveryQuote(restaurant, opts) {
     opts = opts || {};
@@ -95,7 +96,7 @@ function deliveryQuote(restaurant, opts) {
             : 0;
         roadKm = Math.max(0.5, straight * 1.25);
         zoneId = 'gps';
-        zoneName = 'Mi ubicaciÃÂÃÂ³n';
+        zoneName = 'Mi ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n';
     } else {
         const zone = zoneById(opts.zoneId) || zoneById('z-centro');
         const straight = zone && Number.isFinite(restaurant.lat) && Number.isFinite(restaurant.lng)
@@ -139,7 +140,7 @@ function orderView(order) {
     return {
         ...order,
         restaurantName: restaurant ? restaurant.name : 'Restaurante',
-        restaurantEmoji: restaurant ? restaurant.emoji : 'ÃÂ°ÃÂÃÂÃÂ½ÃÂ¯ÃÂ¸ÃÂ',
+        restaurantEmoji: restaurant ? restaurant.emoji : 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ½ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ',
         restaurantColor: restaurant ? restaurant.color : '#7C3AED',
         restaurantAddress: restaurant ? restaurant.address : '',
         customerName: customer ? customer.name : 'Cliente',
@@ -177,11 +178,11 @@ function auth(roles) {
     return (req, res, next) => {
         const header = req.headers.authorization || '';
         const payload = verifyToken(header.startsWith('Bearer ') ? header.slice(7) : header);
-        if (!payload) return res.status(401).json({ error: 'Tu sesiÃÂÃÂ³n expirÃÂÃÂ³. Vuelve a iniciar sesiÃÂÃÂ³n.' });
+        if (!payload) return res.status(401).json({ error: 'Tu sesiÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n expirÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³. Vuelve a iniciar sesiÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n.' });
         const user = db.users.find((u) => u.id === payload.uid);
         if (!user) return res.status(401).json({ error: 'Usuario no encontrado.' });
         if (roles && !roles.includes(user.role)) {
-            return res.status(403).json({ error: 'No tienes permiso para esta acciÃÂÃÂ³n.' });
+            return res.status(403).json({ error: 'No tienes permiso para esta acciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n.' });
         }
         req.user = user;
         next();
@@ -266,8 +267,8 @@ app.get('/api/meta', (_req, res) => {
         zones: db.settings.zones,
         categories,
         paymentMethods: [
-            { id: 'cash', label: 'Efectivo', emoji: 'ÃÂ°ÃÂÃÂÃÂµ', detail: 'Paga al recibir tu pedido' },
-            { id: 'card', label: 'Tarjeta', emoji: 'ÃÂ°ÃÂÃÂÃÂ³', detail: 'Pago simulado con tarjeta' }
+            { id: 'cash', label: 'Efectivo', emoji: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂµ', detail: 'Paga al recibir tu pedido' },
+            { id: 'card', label: 'Tarjeta', emoji: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³', detail: 'Pago simulado con tarjeta' }
         ]
     });
 });
@@ -282,10 +283,10 @@ app.post('/api/auth/register', (req, res) => {
     const role = String(body.role || 'customer');
 
     if (name.length < 2) return res.status(400).json({ error: 'Escribe tu nombre completo.' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'El correo no es vÃÂÃÂ¡lido.' });
-    if (password.length < 6) return res.status(400).json({ error: 'La contraseÃÂÃÂ±a debe tener al menos 6 caracteres.' });
-    if (!['customer', 'driver', 'restaurant'].includes(role)) return res.status(400).json({ error: 'Tipo de cuenta no vÃÂÃÂ¡lido.' });
-    if (db.users.some((u) => u.email === email)) return res.status(409).json({ error: 'Ese correo ya estÃÂÃÂ¡ registrado.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'El correo no es vÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡lido.' });
+    if (password.length < 6) return res.status(400).json({ error: 'La contraseÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±a debe tener al menos 6 caracteres.' });
+    if (!['customer', 'driver', 'restaurant'].includes(role)) return res.status(400).json({ error: 'Tipo de cuenta no vÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡lido.' });
+    if (db.users.some((u) => u.email === email)) return res.status(409).json({ error: 'Ese correo ya estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ registrado.' });
 
     const user = {
         id: uid(),
@@ -313,7 +314,7 @@ app.post('/api/auth/register', (req, res) => {
             ownerId: user.id,
             name: restaurantName,
             category: String(body.category || 'Otros').trim() || 'Otros',
-            emoji: String(body.emoji || 'ÃÂ°ÃÂÃÂÃÂ½ÃÂ¯ÃÂ¸ÃÂ'),
+            emoji: String(body.emoji || 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ½ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ'),
             color: palette[db.restaurants.length % palette.length],
             description: String(body.description || 'Nuevo restaurante en VelozEat').trim(),
             address: String(body.address || '').trim(),
@@ -363,15 +364,15 @@ app.post('/api/auth/login', (req, res) => {
     const password = String((req.body || {}).password || '');
     const user = db.users.find((u) => u.email === email);
     if (!user || !verifyPassword(password, user.passwordHash)) {
-        return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
+        return res.status(401).json({ error: 'Correo o contraseÃÂÃÂÃÂÃÂ±a incorrectos.' });
     }
     if (!user.emailVerified) {
         const code = String(Math.floor(100000 + Math.random() * 900000));
         user.otpCode = code;
         user.otpExpires = Date.now() + 10 * 60 * 1000;
         save();
-        void notify(user.email, 'Tu código de verificación VelozEat', `Hola ${user.name}, tu código de verificación es: ${code}\nExpira en 10 minutos.`);
-        return res.json({ requiresVerification: true, method: 'otp', message: 'Te enviamos un código de 6 dígitos a tu correo.' });
+        void notify(user.email, 'Tu cÃÂÃÂÃÂÃÂ³digo de verificaciÃÂÃÂÃÂÃÂ³n VelozEat', `Hola ${user.name}, tu cÃÂÃÂÃÂÃÂ³digo de verificaciÃÂÃÂÃÂÃÂ³n es: ${code}\nExpira en 10 minutos.`);
+        return res.json({ requiresVerification: true, method: 'otp', message: 'Te enviamos un cÃÂÃÂÃÂÃÂ³digo de 6 dÃÂÃÂÃÂÃÂ­gitos a tu correo.' });
     }
     const restaurant = user.restaurantId ? restaurantById(user.restaurantId) : null;
     res.json({
@@ -419,10 +420,10 @@ app.post('/api/auth/verify-otp', (req, res) => {
         // already verified
     } else {
         if (!user.otpCode || user.otpCode !== code) {
-            return res.status(400).json({ error: 'Código incorrecto.' });
+            return res.status(400).json({ error: 'CÃÂÃÂÃÂÃÂ³digo incorrecto.' });
         }
         if (!user.otpExpires || user.otpExpires < Date.now()) {
-            return res.status(400).json({ error: 'El código expiró. Solicita uno nuevo.' });
+            return res.status(400).json({ error: 'El cÃÂÃÂÃÂÃÂ³digo expirÃÂÃÂÃÂÃÂ³. Solicita uno nuevo.' });
         }
         user.emailVerified = true;
         user.otpCode = null;
@@ -442,13 +443,13 @@ app.post('/api/auth/resend-otp', (req, res) => {
     const email = String((req.body || {}).email || '').trim().toLowerCase();
     const user = db.users.find((u) => u.email === email);
     if (!user) return res.status(404).json({ error: 'No encontramos una cuenta con ese correo.' });
-    if (user.emailVerified) return res.json({ message: 'Tu correo ya está verificado.' });
+    if (user.emailVerified) return res.json({ message: 'Tu correo ya estÃÂÃÂÃÂÃÂ¡ verificado.' });
     const code = String(Math.floor(100000 + Math.random() * 900000));
     user.otpCode = code;
     user.otpExpires = Date.now() + 10 * 60 * 1000;
     save();
-    void notify(user.email, 'Tu código de verificación VelozEat', `Hola ${user.name}, tu código de verificación es: ${code}\nExpira en 10 minutos.`);
-    res.json({ message: 'Te enviamos un nuevo código.' });
+    void notify(user.email, 'Tu cÃÂÃÂÃÂÃÂ³digo de verificaciÃÂÃÂÃÂÃÂ³n VelozEat', `Hola ${user.name}, tu cÃÂÃÂÃÂÃÂ³digo de verificaciÃÂÃÂÃÂÃÂ³n es: ${code}\nExpira en 10 minutos.`);
+    res.json({ message: 'Te enviamos un nuevo cÃÂÃÂÃÂÃÂ³digo.' });
 });
 
 app.get('/api/me', auth(), (req, res) => {
@@ -552,7 +553,7 @@ app.put('/api/restaurants/:id', auth(['restaurant', 'admin']), (req, res) => {
 app.post('/api/restaurants/:id/menu', auth(['restaurant', 'admin']), (req, res) => {
     const restaurant = restaurantById(req.params.id);
     if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
-    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂº.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº.' });
 
     const body = req.body || {};
     const name = String(body.name || '').trim();
@@ -565,8 +566,8 @@ app.post('/api/restaurants/:id/menu', auth(['restaurant', 'admin']), (req, res) 
         name,
         description: String(body.description || '').trim(),
         price: money(price),
-        category: String(body.category || 'MenÃÂÃÂº').trim() || 'MenÃÂÃÂº',
-        emoji: String(body.emoji || 'ÃÂ°ÃÂÃÂÃÂ½ÃÂ¯ÃÂ¸ÃÂ'),
+        category: String(body.category || 'MenÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº').trim() || 'MenÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº',
+        emoji: String(body.emoji || 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ½ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ'),
         available: body.available !== false
     };
     restaurant.menu.push(newItem);
@@ -577,7 +578,7 @@ app.post('/api/restaurants/:id/menu', auth(['restaurant', 'admin']), (req, res) 
 app.put('/api/restaurants/:id/menu/:itemId', auth(['restaurant', 'admin']), (req, res) => {
     const restaurant = restaurantById(req.params.id);
     if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
-    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂº.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº.' });
 
     const menuItem = restaurant.menu.find((m) => m.id === req.params.itemId);
     if (!menuItem) return res.status(404).json({ error: 'Platillo no encontrado.' });
@@ -600,7 +601,7 @@ app.put('/api/restaurants/:id/menu/:itemId', auth(['restaurant', 'admin']), (req
 app.delete('/api/restaurants/:id/menu/:itemId', auth(['restaurant', 'admin']), (req, res) => {
     const restaurant = restaurantById(req.params.id);
     if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
-    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂº.' });
+    if (!ownsRestaurant(req.user, restaurant.id)) return res.status(403).json({ error: 'No puedes editar este menÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº.' });
 
     const index = restaurant.menu.findIndex((m) => m.id === req.params.itemId);
     if (index === -1) return res.status(404).json({ error: 'Platillo no encontrado.' });
@@ -636,33 +637,33 @@ function couponDiscount(coupon, subtotal) {
 app.post('/api/coupons/validate', auth(['customer']), (req, res) => {
     const body = req.body || {};
     const coupon = findCoupon(body.code);
-    if (!coupon) return res.status(404).json({ error: 'CupÃÂÃÂ³n no vÃÂÃÂ¡lido.' });
+    if (!coupon) return res.status(404).json({ error: 'CupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n no vÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡lido.' });
     const subtotal = money(Number(body.subtotal) || 0);
     const discount = couponDiscount(coupon, subtotal);
     if (discount <= 0) {
         if (subtotal < (coupon.minOrder || 0)) {
-            return res.status(400).json({ error: `Este cupÃÂÃÂ³n requiere un pedido mÃÂÃÂ­nimo de $${coupon.minOrder}.` });
+            return res.status(400).json({ error: `Este cupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n requiere un pedido mÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nimo de $${coupon.minOrder}.` });
         }
-        return res.status(400).json({ error: 'El cupÃÂÃÂ³n no aplica a este pedido.' });
+        return res.status(400).json({ error: 'El cupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n no aplica a este pedido.' });
     }
-    res.json({ code: coupon.code, discount, message: `CupÃÂÃÂ³n aplicado: -$${discount}` });
+    res.json({ code: coupon.code, discount, message: `CupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n aplicado: -$${discount}` });
 });
 
 app.post('/api/orders', auth(['customer']), (req, res) => {
     const body = req.body || {};
     const restaurant = restaurantById(body.restaurantId);
     if (!restaurant) return res.status(404).json({ error: 'Restaurante no encontrado.' });
-    if (!restaurant.approved) return res.status(400).json({ error: 'El restaurante aÃÂÃÂºn no estÃÂÃÂ¡ aprobado.' });
-    if (!restaurant.isOpen) return res.status(400).json({ error: 'El restaurante estÃÂÃÂ¡ cerrado en este momento.' });
+    if (!restaurant.approved) return res.status(400).json({ error: 'El restaurante aÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂºn no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ aprobado.' });
+    if (!restaurant.isOpen) return res.status(400).json({ error: 'El restaurante estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ cerrado en este momento.' });
 
     const rawItems = Array.isArray(body.items) ? body.items : [];
-    if (!rawItems.length) return res.status(400).json({ error: 'Tu carrito estÃÂÃÂ¡ vacÃÂÃÂ­o.' });
+    if (!rawItems.length) return res.status(400).json({ error: 'Tu carrito estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ vacÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o.' });
 
     const items = [];
     for (const raw of rawItems) {
         const menuItem = restaurant.menu.find((m) => m.id === raw.itemId);
         if (!menuItem || !menuItem.available) {
-            return res.status(400).json({ error: 'Uno de los platillos ya no estÃÂÃÂ¡ disponible.' });
+            return res.status(400).json({ error: 'Uno de los platillos ya no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ disponible.' });
         }
         const qty = Math.max(1, Math.min(20, parseInt(raw.qty, 10) || 1));
         items.push({ itemId: menuItem.id, name: menuItem.name, emoji: menuItem.emoji, price: menuItem.price, qty });
@@ -673,7 +674,7 @@ app.post('/api/orders', auth(['customer']), (req, res) => {
     const coupon = couponCode ? findCoupon(couponCode) : null;
     const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
     if (subtotal < restaurant.minOrder) {
-        return res.status(400).json({ error: `El pedido mÃÂÃÂ­nimo es $${restaurant.minOrder}.` });
+        return res.status(400).json({ error: `El pedido mÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nimo es $${restaurant.minOrder}.` });
     }
 
     let address = String(body.address || req.user.address || '').trim();
@@ -693,8 +694,8 @@ app.post('/api/orders', auth(['customer']), (req, res) => {
     const quote = deliveryQuote(restaurant, { zoneId, lat: bodyLat, lng: bodyLng });
     if (quote.outOfRange) {
         return res.status(400).json({
-            error: `Tu ubicaciÃÂÃÂ³n estÃÂÃÂ¡ a ${quote.distanceKm} km del restaurante (${quote.zoneName}). ` +
-                `El ÃÂÃÂ¡rea de entrega es de ${quote.maxRadiusKm} km.`
+            error: `Tu ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ a ${quote.distanceKm} km del restaurante (${quote.zoneName}). ` +
+                `El ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡rea de entrega es de ${quote.maxRadiusKm} km.`
         });
     }
     const deliveryFee = quote.deliveryFee;
@@ -757,16 +758,16 @@ app.post('/api/orders', auth(['customer']), (req, res) => {
     const restaurantEmail = restaurantEmailOf(restaurant);
     void notify(
         customerEmail,
-        `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} recibido`,
+        `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} recibido`,
         `Hola ${(db.users.find((u) => u.id === order.customerId) || {}).name || ''}, tu pedido en ${restaurant.name} fue recibido.\n${mailer.orderLine(order)}\nTe avisaremos cuando llegue.`
     );
     void notify(
         restaurantEmail,
-        `ÃÂ°ÃÂÃÂÃÂ VelozEat ÃÂÃÂ· Nuevo pedido #${order.code}`,
-        `Tienes un nuevo pedido pendiente de confirmaciÃÂÃÂ³n.\n${mailer.orderLine(order)}`
+        `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Nuevo pedido #${order.code}`,
+        `Tienes un nuevo pedido pendiente de confirmaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n.\n${mailer.orderLine(order)}`
     );
 
-    res.status(201).json({ order: orderView(order), message: 'ÃÂÃÂ¡Pedido enviado! Espera la confirmaciÃÂÃÂ³n del restaurante.' });
+    res.status(201).json({ order: orderView(order), message: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡Pedido enviado! Espera la confirmaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n del restaurante.' });
 });
 
 app.get('/api/orders', auth(), (req, res) => {
@@ -840,7 +841,7 @@ function transition(allowedStatuses, nextStatus, extra = {}) {
             return res.status(403).json({ error: 'Este pedido no es de tu restaurante.' });
         }
         if (!allowedStatuses.includes(order.status)) {
-            return res.status(409).json({ error: `No se puede hacer eso: el pedido estÃÂÃÂ¡ en estado "${order.status}".` });
+            return res.status(409).json({ error: `No se puede hacer eso: el pedido estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ en estado "${order.status}".` });
         }
         Object.assign(order, extra);
         order.status = nextStatus;
@@ -851,16 +852,18 @@ function transition(allowedStatuses, nextStatus, extra = {}) {
         const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
         if (nextStatus === 'accepted') {
             pushNotification(order.customerId, 'Pedido aceptado', `${restaurant ? restaurant.name : 'El restaurante'} confirmo tu pedido #${order.code}.`);
-            void notify(customer, `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} aceptado`,
-                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} aceptÃÂÃÂ³ tu pedido y lo estÃÂÃÂ¡ preparando.\n${mailer.orderLine(order)}`);
+            void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} aceptado`,
+                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} aceptÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ tu pedido y lo estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ preparando.\n${mailer.orderLine(order)}`);
         } else if (nextStatus === 'preparing') {
             pushNotification(order.customerId, 'En preparacion', `Tu pedido #${order.code} se esta preparando.`);
-            void notify(customer, `ÃÂ°ÃÂÃÂÃÂ¨ÃÂ¢ÃÂÃÂÃÂ°ÃÂÃÂÃÂ³ VelozEat ÃÂÃÂ· Pedido #${order.code} en preparaciÃÂÃÂ³n`,
-                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} estÃÂÃÂ¡ preparando tu pedido.\n${mailer.orderLine(order)}`);
+            void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¨ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} en preparaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n`,
+                `${customerName}, ${restaurant ? restaurant.name : 'El restaurante'} estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ preparando tu pedido.\n${mailer.orderLine(order)}`);
         } else if (nextStatus === 'ready') {
             pushNotification(order.customerId, 'Pedido listo', `Tu pedido #${order.code} esta listo para recoger.`);
-            void notify(customer, `ÃÂ°ÃÂÃÂÃÂ½ÃÂ¯ÃÂ¸ÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} listo`,
-                `${customerName}, tu pedido estÃÂÃÂ¡ listo y pronto serÃÂÃÂ¡ recogido por un repartidor.\n${mailer.orderLine(order)}`);
+            void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ½ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¯ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¸ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} listo`,
+                `${customerName}, tu pedido estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ listo y pronto serÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ recogido por un repartidor.
+            ${mailer.orderLine(order)}`);
+            void autoAssignDriver(order);
         }
 
         res.json({ order: orderView(order), message: 'Pedido actualizado.' });
@@ -907,7 +910,7 @@ app.post('/api/orders/:id/cancel', auth(), (req, res) => {
         return res.status(409).json({ error: 'Este pedido ya no se puede cancelar.' });
     }
     if (role === 'customer' && !['pending', 'accepted'].includes(order.status)) {
-        return res.status(409).json({ error: 'El restaurante ya estÃÂÃÂ¡ preparando tu pedido. Contacta al soporte.' });
+        return res.status(409).json({ error: 'El restaurante ya estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ preparando tu pedido. Contacta al soporte.' });
     }
 
     order.status = 'cancelled';
@@ -920,11 +923,11 @@ app.post('/api/orders/:id/cancel', auth(), (req, res) => {
     const customer = customerEmailOf(order);
     const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
     if (role === 'restaurant') {
-        void notify(customer, `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} cancelado`,
-            `${customerName}, el restaurante cancelÃÂÃÂ³ tu pedido.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
+        void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} cancelado`,
+            `${customerName}, el restaurante cancelÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ tu pedido.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
     } else if (role === 'customer') {
-        void notify(restaurantEmailOf(restaurant), `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} cancelado por el cliente`,
-            `El cliente cancelÃÂÃÂ³ el pedido #${order.code}.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
+        void notify(restaurantEmailOf(restaurant), `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} cancelado por el cliente`,
+            `El cliente cancelÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ el pedido #${order.code}.\n${mailer.orderLine(order)}\nMotivo: ${order.cancelReason}`);
     }
 
     res.json({ order: orderView(order), message: 'Pedido cancelado.' });
@@ -943,7 +946,7 @@ app.post('/api/orders/:id/rate', auth(['customer']), (req, res) => {
     const restaurant = restaurantById(order.restaurantId);
     if (restaurant) recomputeRestaurantRating(restaurant, rating);
     save();
-    res.json({ order: orderView(order), message: 'ÃÂÃÂ¡Gracias por calificar!' });
+    res.json({ order: orderView(order), message: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡Gracias por calificar!' });
 });
 
 // ---------------------------------------------------------------- repartidores
@@ -987,18 +990,18 @@ app.post('/api/driver/status', auth(['driver']), (req, res) => {
         }
     }
     save();
-    res.json({ profile, message: profile.isOnline ? 'EstÃÂÃÂ¡s en lÃÂÃÂ­nea. RecibirÃÂÃÂ¡s pedidos.' : 'EstÃÂÃÂ¡s fuera de lÃÂÃÂ­nea.' });
+    res.json({ profile, message: profile.isOnline ? 'EstÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡s en lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nea. RecibirÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡s pedidos.' : 'EstÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡s fuera de lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nea.' });
 });
 
 app.post('/api/orders/:id/claim', auth(['driver']), (req, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
     if (order.status !== 'ready' || order.driverId) {
-        return res.status(409).json({ error: 'Otro repartidor tomÃÂÃÂ³ este pedido o aÃÂÃÂºn no estÃÂÃÂ¡ listo.' });
+        return res.status(409).json({ error: 'Otro repartidor tomÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ este pedido o aÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂºn no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ listo.' });
     }
     const profile = driverProfile(req.user.id);
     if (profile && !profile.isOnline) {
-        return res.status(409).json({ error: 'Ponte en lÃÂÃÂ­nea para tomar pedidos.' });
+        return res.status(409).json({ error: 'Ponte en lÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nea para tomar pedidos.' });
     }
     order.driverId = req.user.id;
     order.status = 'assigned';
@@ -1008,38 +1011,38 @@ app.post('/api/orders/:id/claim', auth(['driver']), (req, res) => {
     const customer = customerEmailOf(order);
     const driver = (db.users.find((u) => u.id === req.user.id) || {});
     const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
-    void notify(customer, `ÃÂ°ÃÂÃÂÃÂµ VelozEat ÃÂÃÂ· Pedido #${order.code} asignado`,
-        `${customerName}, ${driver.name || 'Tu repartidor'} ya tomÃÂÃÂ³ tu pedido y va por ÃÂÃÂ©l.\n${mailer.orderLine(order)}`);
+    void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂµ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} asignado`,
+        `${customerName}, ${driver.name || 'Tu repartidor'} ya tomÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ tu pedido y va por ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©l.\n${mailer.orderLine(order)}`);
 
-    res.json({ order: orderView(order), message: 'ÃÂÃÂ¡Pedido asignado! Ve al restaurante por ÃÂÃÂ©l.' });
+    res.json({ order: orderView(order), message: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡Pedido asignado! Ve al restaurante por ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©l.' });
 });
 
 app.post('/api/orders/:id/pickup', auth(['driver']), (req, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
-    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂÃÂ¡ asignado a ti.' });
-    if (order.status !== 'assigned') return res.status(409).json({ error: 'El pedido no estÃÂÃÂ¡ listo para recoger.' });
+    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ asignado a ti.' });
+    if (order.status !== 'assigned') return res.status(409).json({ error: 'El pedido no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ listo para recoger.' });
     order.status = 'picked_up';
     order.pickedAt = Date.now();
     save();
 
     const customer = customerEmailOf(order);
     const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
-    void notify(customer, `ÃÂ°ÃÂÃÂÃÂµ VelozEat ÃÂÃÂ· Pedido #${order.code} en camino`,
-        `${customerName}, tu pedido ya saliÃÂÃÂ³ del restaurante y estÃÂÃÂ¡ en camino.\n${mailer.orderLine(order)}`);
+    void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂµ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} en camino`,
+        `${customerName}, tu pedido ya saliÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³ del restaurante y estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ en camino.\n${mailer.orderLine(order)}`);
 
-    res.json({ order: orderView(order), message: 'ÃÂÃÂ¡Pedido recogido! Ya vas en camino.' });
+    res.json({ order: orderView(order), message: 'ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡Pedido recogido! Ya vas en camino.' });
 });
 
 app.post('/api/orders/:id/deliver', auth(['driver']), (req, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
-    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂÃÂ¡ asignado a ti.' });
+    if (order.driverId !== req.user.id) return res.status(403).json({ error: 'Este pedido no estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ asignado a ti.' });
     if (order.status !== 'picked_up') return res.status(409).json({ error: 'Primero marca que recogiste el pedido.' });
 
     const code = String((req.body || {}).code || '').trim();
     if (code !== order.securityCode) {
-        return res.status(400).json({ error: 'El cÃÂÃÂ³digo de entrega no coincide. PÃÂÃÂ­deselo al cliente.' });
+        return res.status(400).json({ error: 'El cÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³digo de entrega no coincide. PÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­deselo al cliente.' });
     }
 
     order.status = 'delivered';
@@ -1053,9 +1056,9 @@ app.post('/api/orders/:id/deliver', auth(['driver']), (req, res) => {
 
     const customer = customerEmailOf(order);
     const customerName = (db.users.find((u) => u.id === order.customerId) || {}).name || 'Cliente';
-    void notify(customer, `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· Pedido #${order.code} entregado`,
-        `${customerName}, ÃÂÃÂ¡tu pedido fue entregado!\n${mailer.orderLine(order)}\nGracias por usar VelozEat.`);
-    void notify(driverEmailOf(order), `ÃÂ°ÃÂÃÂÃÂµ VelozEat ÃÂÃÂ· Entrega #${order.code} ÃÂÃÂ· Ganaste $${order.driverEarnings}`,
+    void notify(customer, `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Pedido #${order.code} entregado`,
+        `${customerName}, ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡tu pedido fue entregado!\n${mailer.orderLine(order)}\nGracias por usar VelozEat.`);
+    void notify(driverEmailOf(order), `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂµ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Entrega #${order.code} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· Ganaste $${order.driverEarnings}`,
         `Entrega #${order.code} completada.\n${mailer.orderLine(order)}\nTus ganancias fueron actualizadas.`);
 
     res.json({ order: orderView(order), message: `Entrega completada. Ganaste $${order.driverEarnings}.` });
@@ -1077,7 +1080,7 @@ function driverCoords(order) {
     if (live && Date.now() - live.updatedAt < 10 * 60 * 1000) {
         return { lat: live.lat, lng: live.lng, live: true };
     }
-    // PosiciÃÂÃÂ³n estimada para la demostraciÃÂÃÂ³n (restaurante ÃÂ¢ÃÂÃÂ cliente)
+    // PosiciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n estimada para la demostraciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n (restaurante ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ cliente)
     const restaurant = restaurantById(order.restaurantId);
     if (!restaurant) return null;
     const dest = customerCoords(order);
@@ -1099,7 +1102,7 @@ app.put('/api/driver/location', auth(['driver']), (req, res) => {
     const lat = Number((req.body || {}).lat);
     const lng = Number((req.body || {}).lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return res.status(400).json({ error: 'Coordenadas invÃÂÃÂ¡lidas.' });
+        return res.status(400).json({ error: 'Coordenadas invÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡lidas.' });
     }
     db.driverLocations[req.user.id] = { lat, lng, updatedAt: Date.now() };
     save();
@@ -1191,7 +1194,7 @@ app.put('/api/admin/settings', auth(['admin']), (req, res) => {
     }
 
     save();
-    res.json({ settings: db.settings, message: 'ConfiguraciÃÂÃÂ³n actualizada.' });
+    res.json({ settings: db.settings, message: 'ConfiguraciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n actualizada.' });
 });
 
 app.put('/api/admin/password', auth(['admin']), (req, res) => {
@@ -1199,14 +1202,14 @@ app.put('/api/admin/password', auth(['admin']), (req, res) => {
     const currentPassword = String(body.currentPassword || '');
     const newPassword = String(body.newPassword || '');
     if (!verifyPassword(currentPassword, req.user.passwordHash)) {
-        return res.status(400).json({ error: 'La contraseÃÂÃÂ±a actual no es correcta.' });
+        return res.status(400).json({ error: 'La contraseÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±a actual no es correcta.' });
     }
     if (newPassword.length < 8) {
-        return res.status(400).json({ error: 'La nueva contraseÃÂÃÂ±a debe tener al menos 8 caracteres.' });
+        return res.status(400).json({ error: 'La nueva contraseÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±a debe tener al menos 8 caracteres.' });
     }
     req.user.passwordHash = hashPassword(newPassword);
     save();
-    res.json({ message: 'ContraseÃÂÃÂ±a de administrador actualizada.' });
+    res.json({ message: 'ContraseÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ±a de administrador actualizada.' });
 });
 
 app.get('/api/admin/restaurants', auth(['admin']), (_req, res) => {
@@ -1222,9 +1225,9 @@ app.post('/api/admin/restaurants/:id/approve', auth(['admin']), (req, res) => {
 
     void notify(
         restaurantEmailOf(restaurant),
-        restaurant.approved ? `ÃÂ¢ÃÂÃÂ VelozEat ÃÂÃÂ· ${restaurant.name} aprobado` : `ÃÂ°ÃÂÃÂÃÂ« VelozEat ÃÂÃÂ· ${restaurant.name} bloqueado`,
+        restaurant.approved ? `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ${restaurant.name} aprobado` : `ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ« VelozEat ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ${restaurant.name} bloqueado`,
         restaurant.approved
-            ? `Tu restaurante ${restaurant.name} ya estÃÂÃÂ¡ aprobado y visible para los clientes en VelozEat.`
+            ? `Tu restaurante ${restaurant.name} ya estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ aprobado y visible para los clientes en VelozEat.`
             : `Tu restaurante ${restaurant.name} fue bloqueado por el equipo de VelozEat.`
     );
 
@@ -1238,6 +1241,16 @@ app.get('/api/admin/orders', auth(['admin']), (_req, res) => {
     const orders = db.orders.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 200).map(orderView);
     res.json({ orders });
 });
+
+// ---------------------------------------------------------------- WhatsApp Business API
+whatsapp.register(app, {
+    db, save, uid, money, auth,
+    restaurantById, zoneById, deliveryQuote,
+    customerEmailOf, restaurantEmailOf, driverEmailOf, driverProfile,
+    orderView, pushNotification, notify, mailer, haversineKm,
+    nextOrderCode, newSecurityCode
+});
+const autoAssignDriver = whatsapp.autoAssignDriver;
 
 // ---------------------------------------------------------------- web / errores
 const adminDir = path.join(__dirname, 'admin');
@@ -1259,6 +1272,64 @@ if (fs.existsSync(webBuild)) {
     });
 }
 
+// ---------------------------------------------------------------- pagos (estructura para pasarela real)
+app.post('/api/payments/create-intent', auth(['customer']), async (req, res) => {
+    const amount = Math.max(0, Number((req.body || {}).amount) || 0);
+    const currency = String((req.body || {}).currency || 'mxn').toLowerCase();
+    if (!(amount > 0)) return res.status(400).json({ error: 'Monto invÃÂÃÂ¡lido.' });
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (stripeKey) {
+        const stripe = require('stripe')(stripeKey);
+        try {
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: Math.round(amount * 100),
+                currency: currency,
+                automatic_payment_methods: { enabled: true },
+            });
+            return res.json({
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
+                amount,
+                currency,
+                simulated: false,
+                message: 'PaymentIntent creado con Stripe.'
+            });
+        } catch (err) {
+            console.error('Stripe error:', err.message);
+            return res.status(500).json({ error: 'Error al crear el pago: ' + err.message });
+        }
+    }
+
+    // Modo simulado (sin clave de Stripe)
+    const clientSecret = `sim_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    res.json({
+        clientSecret,
+        amount,
+        currency,
+        simulated: true,
+        message: 'Modo simulado: no se cobra realmente. Configura STRIPE_SECRET_KEY para pagos reales.'
+    });
+});
+
+app.post('/api/payments/confirm', auth(['customer']), (req, res) => {
+    const paymentIntentId = String((req.body || {}).paymentIntentId || '').trim();
+    if (!paymentIntentId) return res.status(400).json({ error: 'Falta el ID del pago.' });
+
+    // En producciÃÂÃÂ³n, aquÃÂÃÂ­ se verificarÃÂÃÂ­a el estado del pago con la pasarela.
+    // Ejemplo con Stripe: const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const simulated = paymentIntentId.startsWith('sim_');
+    res.json({
+        paymentIntentId,
+        status: 'succeeded',
+        simulated,
+        message: simulated
+            ? 'Pago simulado confirmado. No se cobrÃÂÃÂ³ realmente.'
+            : 'Pago confirmado con la pasarela.'
+    });
+});
+
+
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
 
 app.use((err, _req, res, _next) => {
@@ -1275,8 +1346,8 @@ app.get('/api/admin/coupons', auth(['admin']), (_req, res) => {
 app.post('/api/admin/coupons', auth(['admin']), (req, res) => {
     const body = req.body || {};
     const code = String(body.code || '').trim().toUpperCase();
-    if (code.length < 3) return res.status(400).json({ error: 'El cÃÂÃÂ³digo debe tener al menos 3 caracteres.' });
-    if (findCoupon(code)) return res.status(409).json({ error: 'Ya existe un cupÃÂÃÂ³n con ese cÃÂÃÂ³digo.' });
+    if (code.length < 3) return res.status(400).json({ error: 'El cÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³digo debe tener al menos 3 caracteres.' });
+    if (findCoupon(code)) return res.status(409).json({ error: 'Ya existe un cupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n con ese cÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³digo.' });
     const coupon = {
         id: uid(),
         code,
@@ -1293,15 +1364,15 @@ app.post('/api/admin/coupons', auth(['admin']), (req, res) => {
     db.coupons = db.coupons || [];
     db.coupons.push(coupon);
     save();
-    res.status(201).json({ coupon, message: 'CupÃÂÃÂ³n creado.' });
+    res.status(201).json({ coupon, message: 'CupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n creado.' });
 });
 
 app.delete('/api/admin/coupons/:id', auth(['admin']), (req, res) => {
     const idx = (db.coupons || []).findIndex((c) => c.id === req.params.id);
-    if (idx === -1) return res.status(404).json({ error: 'CupÃÂÃÂ³n no encontrado.' });
+    if (idx === -1) return res.status(404).json({ error: 'CupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n no encontrado.' });
     db.coupons.splice(idx, 1);
     save();
-    res.json({ message: 'CupÃÂÃÂ³n eliminado.' });
+    res.json({ message: 'CupÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n eliminado.' });
 });
 
 
@@ -1328,7 +1399,7 @@ app.get('/api/orders/:id/messages', auth(), (req, res) => {
 app.post('/api/orders/:id/messages', auth(), (req, res) => {
     const order = db.orders.find((o) => o.id === req.params.id);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
-    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes enviar mensajes aquÃÂ­.' });
+    if (!canSeeOrder(req.user, order)) return res.status(403).json({ error: 'No puedes enviar mensajes aquÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­.' });
     const text = String((req.body || {}).text || '').trim();
     if (text.length < 1) return res.status(400).json({ error: 'Escribe un mensaje.' });
     const msg = {
@@ -1367,7 +1438,7 @@ app.get('/api/notifications', auth(), (req, res) => {
 
 app.post('/api/notifications/:id/read', auth(), (req, res) => {
     const n = (db.notifications || []).find((x) => x.id === req.params.id && x.userId === req.user.id);
-    if (!n) return res.status(404).json({ error: 'NotificaciÃÂ³n no encontrada.' });
+    if (!n) return res.status(404).json({ error: 'NotificaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n no encontrada.' });
     n.read = true;
     save();
     res.json({ notification: n });
@@ -1381,13 +1452,14 @@ app.get('/api/wallet', auth(['customer']), (req, res) => {
 
 app.post('/api/wallet/topup', auth(['customer']), (req, res) => {
     const amount = Math.max(1, Math.min(10000, Number((req.body || {}).amount) || 0));
-    if (!(amount > 0)) return res.status(400).json({ error: 'Monto invÃ¡lido.' });
+    if (!(amount > 0)) return res.status(400).json({ error: 'Monto invÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡lido.' });
     req.user.walletBalance = money((req.user.walletBalance || 0) + amount);
     save();
     res.json({ balance: money(req.user.walletBalance), message: `Se agregaron $${amount} a tu billetera.` });
 });
 
+
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ÃÂ¢ÃÂÃÂ¡ VelozEat API escuchando en http://localhost:${PORT}`);
+    console.log(`ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ VelozEat API escuchando en http://localhost:${PORT}`);
     console.log(`   Restaurantes: ${db.restaurants.length} | Usuarios: ${db.users.length} | Pedidos: ${db.orders.length}`);
 });

@@ -102,7 +102,7 @@ class _AdminShellState extends State<AdminShell> {
     if (_error != null && _stats.isEmpty) {
       return Scaffold(
         body: EmptyState(
-          emoji: '📡',
+          emoji: '',
           title: 'No pudimos cargar el panel',
           subtitle: _error!,
           action: FilledButton(
@@ -179,12 +179,12 @@ class _AdminShellState extends State<AdminShell> {
               crossAxisSpacing: 10,
               childAspectRatio: 1.75,
               children: [
-                _AdminStat(emoji: '🧾', label: 'Pedidos hoy', value: '${asInt(_stats['ordersToday'])}'),
-                _AdminStat(emoji: '🛵', label: 'Pedidos activos', value: '${asInt(_stats['activeOrders'])}'),
-                _AdminStat(emoji: '🍽️', label: 'Restaurantes', value: '${asInt(_stats['restaurants'])}'),
+                _AdminStat(emoji: '', label: 'Pedidos hoy', value: '${asInt(_stats['ordersToday'])}'),
+                _AdminStat(emoji: '', label: 'Pedidos activos', value: '${asInt(_stats['activeOrders'])}'),
+                _AdminStat(emoji: '', label: 'Restaurantes', value: '${asInt(_stats['restaurants'])}'),
                 _AdminStat(emoji: '⏳', label: 'Por aprobar', value: '${asInt(_stats['pendingRestaurants'])}'),
-                _AdminStat(emoji: '🛍️', label: 'Clientes', value: '${asInt(_stats['customers'])}'),
-                _AdminStat(emoji: '🛵', label: 'Repartidores', value: '${asInt(_stats['drivers'])}'),
+                _AdminStat(emoji: '', label: 'Clientes', value: '${asInt(_stats['customers'])}'),
+                _AdminStat(emoji: '', label: 'Repartidores', value: '${asInt(_stats['drivers'])}'),
               ],
             ),
             const SizedBox(height: 18),

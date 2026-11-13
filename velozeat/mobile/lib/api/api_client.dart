@@ -61,9 +61,9 @@ class ApiClient {
         _ => await http.get(uri, headers: headers).timeout(const Duration(seconds: 20)),
       };
     } on http.ClientException {
-      throw ApiException('No se pudo conectar con VelozEat. Verifica que el servidor estÃÂ© encendido.');
+      throw ApiException('No se pudo conectar con VelozEat. Verifica que el servidor esté encendido.');
     } catch (_) {
-      throw ApiException('Sin conexiÃÂ³n con el servidor. Revisa tu red e intenta de nuevo.');
+      throw ApiException('Sin conexión con el servidor. Revisa tu red e intenta de nuevo.');
     }
 
     Map<String, dynamic> data = {};
@@ -77,7 +77,7 @@ class ApiClient {
     }
 
     if (response.statusCode >= 400) {
-      throw ApiException((data['error'] ?? 'OcurriÃÂ³ un error (${response.statusCode}).').toString());
+      throw ApiException((data['error'] ?? 'Ocurrió un error (${response.statusCode}).').toString());
     }
     return data;
   }

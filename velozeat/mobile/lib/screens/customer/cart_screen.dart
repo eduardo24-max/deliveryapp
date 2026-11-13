@@ -94,7 +94,7 @@ class _CartScreenState extends State<CartScreen> {
     if (!mounted) return;
     if (position == null) {
       setState(() => _loadingQuote = false);
-      showSnack(context, 'No se pudo obtener tu ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n. Activa el GPS y dale permiso a VelozEat.', error: true);
+      showSnack(context, 'No se pudo obtener tu ubicaciÃÂÃÂ³n. Activa el GPS y dale permiso a VelozEat.', error: true);
       return;
     }
     setState(() {
@@ -116,7 +116,7 @@ class _CartScreenState extends State<CartScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Selecciona la ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n de entrega'),
+              title: const Text('Selecciona la ubicaciÃÂÃÂ³n de entrega'),
               content: SizedBox(
                 width: double.maxFinite,
                 height: 320,
@@ -158,7 +158,7 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 8),
                     Text(
                       selected == null
-                          ? 'Toca el mapa para marcar tu ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n'
+                          ? 'Toca el mapa para marcar tu ubicaciÃÂÃÂ³n'
                           : 'Lat ${selected!.latitude.toStringAsFixed(5)}, Lng ${selected!.longitude.toStringAsFixed(5)}',
                       style: const TextStyle(fontSize: 12, color: kMuted),
                     ),
@@ -222,7 +222,7 @@ class _CartScreenState extends State<CartScreen> {
     if (_payment != 'card') return true;
     final number = _cardNumber.text.replaceAll(' ', '');
     if (number.length < 13 || number.length > 19 || !_luhn(number)) {
-      showSnack(context, 'NÃÂÃÂÃÂÃÂºmero de tarjeta invÃÂÃÂÃÂÃÂ¡lido.', error: true);
+      showSnack(context, 'NÃÂÃÂºmero de tarjeta invÃÂÃÂ¡lido.', error: true);
       return false;
     }
     if (_cardName.text.trim().length < 3) {
@@ -231,25 +231,25 @@ class _CartScreenState extends State<CartScreen> {
     }
     final expiry = _cardExpiry.text.trim();
     if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(expiry)) {
-      showSnack(context, 'Fecha de expiraciÃÂÃÂÃÂÃÂ³n invÃÂÃÂÃÂÃÂ¡lida (MM/AA).', error: true);
+      showSnack(context, 'Fecha de expiraciÃÂÃÂ³n invÃÂÃÂ¡lida (MM/AA).', error: true);
       return false;
     }
     final parts = expiry.split('/');
     final month = int.tryParse(parts[0]) ?? 0;
     final year = int.tryParse(parts[1]) ?? 0;
     if (month < 1 || month > 12) {
-      showSnack(context, 'Mes de expiraciÃÂÃÂÃÂÃÂ³n invÃÂÃÂÃÂÃÂ¡lido.', error: true);
+      showSnack(context, 'Mes de expiraciÃÂÃÂ³n invÃÂÃÂ¡lido.', error: true);
       return false;
     }
     final now = DateTime.now();
     final fullYear = 2000 + year;
     if (fullYear < now.year || (fullYear == now.year && month < now.month)) {
-      showSnack(context, 'La tarjeta estÃÂÃÂÃÂÃÂ¡ expirada.', error: true);
+      showSnack(context, 'La tarjeta estÃÂÃÂ¡ expirada.', error: true);
       return false;
     }
     final cvv = _cardCvv.text.trim();
     if (cvv.length < 3 || cvv.length > 4) {
-      showSnack(context, 'CVV invÃÂÃÂÃÂÃÂ¡lido.', error: true);
+      showSnack(context, 'CVV invÃÂÃÂ¡lido.', error: true);
       return false;
     }
     return true;
@@ -275,17 +275,17 @@ class _CartScreenState extends State<CartScreen> {
     if (_placing) return;
     if (app.cartLines.isEmpty) return;
     if (_quote?.outOfRange == true) {
-      showSnack(context, 'Tu ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ fuera del ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡rea de entrega.', error: true);
+      showSnack(context, 'Tu ubicaciÃÂÃÂ³n estÃÂÃÂ¡ fuera del ÃÂÃÂ¡rea de entrega.', error: true);
       return;
     }
     if (_lat == null && _zoneId.isEmpty) {
-      showSnack(context, 'Elige una zona de entrega o tu ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n.', error: true);
+      showSnack(context, 'Elige una zona de entrega o tu ubicaciÃÂÃÂ³n.', error: true);
       return;
     }
     if (!_validateCard()) return;
     if (app.cartSubtotal < widget.restaurant.minOrder) {
       showSnack(context,
-          'El pedido mÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nimo es ${money(widget.restaurant.minOrder)}. Agrega algo mÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡s.', error: true);
+          'El pedido mÃÂÃÂ­nimo es ${money(widget.restaurant.minOrder)}. Agrega algo mÃÂÃÂ¡s.', error: true);
       return;
     }
 
@@ -297,7 +297,7 @@ class _CartScreenState extends State<CartScreen> {
         'address': _address.text.trim().isNotEmpty
             ? _address.text.trim()
             : (_lat != null && _lng != null
-                ? 'UbicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n GPS (${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)})'
+                ? 'UbicaciÃÂÃÂ³n GPS (${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)})'
                 : (_zones.firstWhere((z) => z.id == _zoneId, orElse: () => Zone(id: '', name: 'Zona de entrega')).name)),
         'zoneId': _zoneId,
         if (_lat != null && _lng != null) 'lat': _lat,
@@ -336,13 +336,13 @@ class _CartScreenState extends State<CartScreen> {
       appBar: AppBar(title: const Text('Tu carrito')),
       body: lines.isEmpty
           ? EmptyState(
-              emoji: 'ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ',
-              title: 'Tu carrito estÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡ vacÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o',
+              emoji: '',
+              title: 'Tu carrito estÃÂÃÂ¡ vacÃÂÃÂ­o',
               subtitle: 'Agrega platillos de ${widget.restaurant.name} para empezar.',
               action: OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(180, 48)),
-                child: const Text('Ver el menÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂº'),
+                child: const Text('Ver el menÃÂÃÂº'),
               ),
             )
           : ListView(
@@ -360,8 +360,8 @@ class _CartScreenState extends State<CartScreen> {
                               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                           Text(
                               quote == null
-                                  ? '${widget.restaurant.etaMinutes} min ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· EnvÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o desde ${money(delivery)}'
-                                  : '${widget.restaurant.etaMinutes} min ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ${quote.distanceKm.toStringAsFixed(1)} km ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· EnvÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o ${money(delivery)}',
+                                  ? '${widget.restaurant.etaMinutes} min ÃÂÃÂ· EnvÃÂÃÂ­o desde ${money(delivery)}'
+                                  : '${widget.restaurant.etaMinutes} min ÃÂÃÂ· ${quote.distanceKm.toStringAsFixed(1)} km ÃÂÃÂ· EnvÃÂÃÂ­o ${money(delivery)}',
                               style: const TextStyle(fontSize: 11.5, color: kMuted)),
                         ],
                       ),
@@ -403,7 +403,7 @@ class _CartScreenState extends State<CartScreen> {
                     )),
                 const SizedBox(height: 10),
                 _block(
-                  title: 'DirecciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n de entrega',
+                  title: 'DirecciÃÂÃÂ³n de entrega',
                   child: Column(
                     children: [
                       Row(
@@ -412,7 +412,7 @@ class _CartScreenState extends State<CartScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _loadingQuote ? null : _useGps,
                               icon: const Icon(Icons.my_location_rounded, size: 18),
-                              label: const Text('Mi ubicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n'),
+                              label: const Text('Mi ubicaciÃÂÃÂ³n'),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -439,7 +439,7 @@ class _CartScreenState extends State<CartScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'UbicaciÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³n GPS aplicada ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· ${quote?.distanceKm.toStringAsFixed(1) ?? '...'} km del restaurante',
+                                  'UbicaciÃÂÃÂ³n GPS aplicada ÃÂÃÂ· ${quote?.distanceKm.toStringAsFixed(1) ?? '...'} km del restaurante',
                                   style: const TextStyle(fontSize: 12, color: kBrand, fontWeight: FontWeight.w700),
                                 ),
                               ),
@@ -488,7 +488,7 @@ class _CartScreenState extends State<CartScreen> {
                         decoration: InputDecoration(
                           hintText: _lat != null || _zoneId.isNotEmpty
                               ? 'Referencias para el repartidor (opcional)'
-                              : 'Calle, nÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂºmero, colonia y referencias',
+                              : 'Calle, nÃÂÃÂºmero, colonia y referencias',
                           prefixIcon: const Icon(Icons.location_on_outlined),
                         ),
                       ),
@@ -507,11 +507,11 @@ class _CartScreenState extends State<CartScreen> {
                             Expanded(
                               child: Text(
                                 _loadingQuote
-                                    ? 'Calculando el envÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o por distancia...'
+                                    ? 'Calculando el envÃÂÃÂ­o por distancia...'
                                     : quote == null
-                                        ? 'EnvÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o desde ${money(delivery)}'
-                                        : '${quote.distanceKm.toStringAsFixed(1)} km desde el restaurante ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ· '
-                                            'EnvÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o ${money(quote.deliveryFee)}',
+                                        ? 'EnvÃÂÃÂ­o desde ${money(delivery)}'
+                                        : '${quote.distanceKm.toStringAsFixed(1)} km desde el restaurante ÃÂÃÂ· '
+                                            'EnvÃÂÃÂ­o ${money(quote.deliveryFee)}',
                                 style: const TextStyle(
                                     fontSize: 12, color: kBrand, fontWeight: FontWeight.w700),
                               ),
@@ -575,24 +575,17 @@ class _CartScreenState extends State<CartScreen> {
                 ),
                 const SizedBox(height: 12),
                 _block(
-                  title: 'MÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©todo de pago',
+                  title: 'MÃÂÃÂ©todo de pago',
                   child: Row(
                     children: [
                       _PaymentTile(
-                        emoji: 'ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂµ',
+                        emoji: '',
                         label: 'Efectivo',
                         detail: 'Pagas al recibir',
                         selected: _payment == 'cash',
                         onTap: () => setState(() => _payment = 'cash'),
                       ),
                       const SizedBox(width: 10),
-                      _PaymentTile(
-                        emoji: 'ÃÂÃÂÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ³',
-                        label: 'Tarjeta',
-                        detail: 'Pago simulado',
-                        selected: _payment == 'card',
-                        onTap: () => setState(() => _payment = 'card'),
-                      ),
                       _PaymentTile(
                         emoji: 'Wallet',
                         label: 'Billetera',
@@ -603,61 +596,6 @@ class _CartScreenState extends State<CartScreen> {
                     ],
                   ),
                 ),
-                if (_payment == 'card') ...[
-                  _block(
-                    title: 'Datos de la tarjeta',
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _cardNumber,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Numero de tarjeta',
-                            prefixIcon: Icon(Icons.credit_card_rounded),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _cardName,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre del titular',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _cardExpiry,
-                                decoration: const InputDecoration(
-                                  labelText: 'MM/AA',
-                                  prefixIcon: Icon(Icons.date_range_outlined),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: _cardCvv,
-                                keyboardType: TextInputType.number,
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'CVV',
-                                  prefixIcon: Icon(Icons.lock_outline),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text('Pago simulado: no se cobra realmente.', style: TextStyle(fontSize: 11, color: kMuted)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
                 const SizedBox(height: 12),
                 _block(
                   title: 'Propina para tu repartidor',
@@ -697,7 +635,7 @@ class _CartScreenState extends State<CartScreen> {
                       PriceRow('Subtotal', money(subtotal)),
                       if (quote != null)
                         PriceRow('Distancia', '${quote.distanceKm.toStringAsFixed(1)} km'),
-                      PriceRow('EnvÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­o', money(delivery)),
+                      PriceRow('EnvÃÂÃÂ­o', money(delivery)),
                       if (_discount > 0) PriceRow('Cupon', '-${money(_discount)}', color: kGreen),
                       PriceRow('Propina', money(_tip)),
                       const Divider(height: 20),
@@ -711,7 +649,7 @@ class _CartScreenState extends State<CartScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            'Te faltan ${money(widget.restaurant.minOrder - subtotal)} para el pedido mÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ­nimo.',
+                            'Te faltan ${money(widget.restaurant.minOrder - subtotal)} para el pedido mÃÂÃÂ­nimo.',
                             style: const TextStyle(fontSize: 12, color: kBrand, fontWeight: FontWeight.w700),
                           ),
                         ),

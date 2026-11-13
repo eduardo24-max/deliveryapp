@@ -33,17 +33,7 @@ Color statusColor(String status) => switch (status) {
       _ => kMuted,
     };
 
-String statusEmoji(String status) => switch (status) {
-      'pending' => '📨',
-      'accepted' => '✅',
-      'preparing' => '👨‍🍳',
-      'ready' => '🛍️',
-      'assigned' => '🛵',
-      'picked_up' => '🚀',
-      'delivered' => '🎉',
-      'cancelled' => '✖️',
-      _ => '•',
-    };
+String statusEmoji(String status) => '';
 
 String relativeTime(DateTime? date) {
   if (date == null) return '';
@@ -52,7 +42,7 @@ String relativeTime(DateTime? date) {
   if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
   if (diff.inHours < 24) return 'hace ${diff.inHours} h';
   if (diff.inDays == 1) return 'ayer';
-  return 'hace ${diff.inDays} días';
+  return 'hace ${diff.inDays} dÃ­as';
 }
 
 void showSnack(BuildContext context, String message, {bool error = false}) {
@@ -90,6 +80,13 @@ class AppLogo extends StatelessWidget {
             width: size * 1.9,
             height: size * 1.9,
             fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: size * 1.9,
+              height: size * 1.9,
+              color: kBrand,
+              alignment: Alignment.center,
+              child: Icon(Icons.bolt_rounded, color: Colors.white, size: size * 1.35),
+            ),
           ),
         ),
         const SizedBox(width: 10),
@@ -155,7 +152,9 @@ class EmojiBox extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       alignment: Alignment.center,
-      child: Text(emoji, style: TextStyle(fontSize: size * 0.48)),
+      child: emoji.trim().isEmpty || emoji.runes.any((r) => r > 0x00FF)
+          ? Icon(Icons.restaurant_rounded, size: size * 0.42, color: color)
+          : Text(emoji, style: TextStyle(fontSize: size * 0.48)),
     );
   }
 }

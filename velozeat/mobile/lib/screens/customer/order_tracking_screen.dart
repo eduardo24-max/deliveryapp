@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -173,7 +173,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           ? const LoadingBox(label: 'Consultando tu pedido...')
           : _error != null && order == null
               ? EmptyState(
-                  emoji: '⚠️',
+                  emoji: '',
                   title: 'No pudimos cargar el pedido',
                   subtitle: _error!,
                   action: FilledButton(
@@ -183,7 +183,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ),
                 )
               : order == null
-                  ? const EmptyState(emoji: '📦', title: 'Pedido no encontrado')
+                  ? const EmptyState(emoji: '', title: 'Pedido no encontrado')
                   : RefreshIndicator(
                       color: kBrand,
                       onRefresh: _fetch,
@@ -205,7 +205,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               color: kRed.withValues(alpha: 0.05),
                               child: const Row(
                                 children: [
-                                  Text('🚫', style: TextStyle(fontSize: 24)),
+                                  Text('', style: TextStyle(fontSize: 24)),
                                   SizedBox(width: 12),
                                   Expanded(
                                     child: Text('Pedido cancelado. No se realizó ningún cobro.',
@@ -365,13 +365,13 @@ class _Timeline extends StatelessWidget {
   const _Timeline({required this.status});
 
   static const steps = [
-    ('pending', 'Pedido enviado', '📦'),
-    ('accepted', 'Restaurante confirmó', '✅'),
-    ('preparing', 'Preparando tu comida', '👨‍🍳'),
-    ('ready', 'Listo para recoger', '🥡'),
-    ('assigned', 'Repartidor asignado', '🛵'),
-    ('picked_up', 'En camino', '🚀'),
-    ('delivered', 'Entregado', '🎉'),
+    ('pending', 'Pedido enviado', ''),
+    ('accepted', 'Restaurante confirmó', ''),
+    ('preparing', 'Preparando tu comida', ''),
+    ('ready', 'Listo para recoger', ''),
+    ('assigned', 'Repartidor asignado', ''),
+    ('picked_up', 'En camino', ''),
+    ('delivered', 'Entregado', ''),
   ];
 
   @override
@@ -449,7 +449,7 @@ class _DriverCard extends StatelessWidget {
             height: 46,
             decoration: BoxDecoration(color: kGreen.withValues(alpha: 0.12), shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: const Text('🛵', style: TextStyle(fontSize: 22)),
+            child: const Text('', style: TextStyle(fontSize: 22)),
           ),
           const SizedBox(width: 12),
           Expanded(

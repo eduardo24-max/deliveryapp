@@ -97,7 +97,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
           ? const LoadingBox(label: 'Abriendo el menú...')
           : _error != null
               ? EmptyState(
-                  emoji: '😕',
+                  emoji: '',
                   title: 'No pudimos abrir el restaurante',
                   subtitle: _error!,
                   action: FilledButton(
@@ -107,7 +107,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                   ),
                 )
               : restaurant == null
-                  ? const EmptyState(emoji: '🍽️', title: 'Restaurante no disponible')
+                  ? const EmptyState(emoji: '', title: 'Restaurante no disponible')
                   : RefreshIndicator(
                       color: kBrand,
                       onRefresh: _load,
@@ -152,9 +152,9 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                                           const SizedBox(height: 6),
                                           Row(
                                             children: [
-                                              _MiniStat('🛵', '${restaurant.etaMinutes} min'),
+                                              _MiniStat('', '${restaurant.etaMinutes} min'),
                                               const SizedBox(width: 10),
-                                              _MiniStat('🛍️', 'Envío desde ${money(restaurant.deliveryFee)}'),
+                                              _MiniStat('', 'Envío desde ${money(restaurant.deliveryFee)}'),
                                             ],
                                           ),
                                         ],
@@ -237,7 +237,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     if (groups.isEmpty) {
       return [
         const EmptyState(
-          emoji: '📋',
+          emoji: '',
           title: 'Menú en preparación',
           subtitle: 'Este restaurante todavía no publica platillos.',
         ),

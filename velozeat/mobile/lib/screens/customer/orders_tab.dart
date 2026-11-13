@@ -81,7 +81,7 @@ class _CustomerOrdersTabState extends State<CustomerOrdersTab> {
               const LoadingBox(label: 'Cargando tus pedidos...')
             else if (_error != null)
               EmptyState(
-                emoji: '📡',
+                emoji: '',
                 title: 'No pudimos cargar tus pedidos',
                 subtitle: _error!,
                 action: FilledButton(
@@ -92,7 +92,7 @@ class _CustomerOrdersTabState extends State<CustomerOrdersTab> {
               )
             else if (_orders.isEmpty)
               const EmptyState(
-                emoji: '🍽️',
+                emoji: '',
                 title: 'Aún no tienes pedidos',
                 subtitle: 'Explora los restaurantes y pide tu primer antojo.',
               )

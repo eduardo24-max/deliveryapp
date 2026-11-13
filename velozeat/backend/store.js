@@ -85,6 +85,10 @@ function migrate(data) {
         data.coupons = [];
         changed = true;
     }
+    if (!Array.isArray(data.whatsappSessions)) {
+        data.whatsappSessions = [];
+        changed = true;
+    }
     if (!Array.isArray(data.settings.zones) || data.settings.zones.length === 0) {
         data.settings.zones = DEFAULT_ZONES.map((z) => ({ ...z }));
         changed = true;
@@ -311,6 +315,7 @@ function seed() {
         orders,
         messages: [],
         notifications: [],
+        whatsappSessions: [],
         coupons: [
             { id: 'c-bienvenido', code: 'BIENVENIDO', type: 'percent', value: 15, minOrder: 100, maxDiscount: 50, active: true, expiresAt: now + 30*24*60*60*1000, usageLimit: 1000, usedCount: 0 },
             { id: 'c-envio', code: 'ENVIOGRATIS', type: 'fixed', value: 30, minOrder: 150, maxDiscount: 30, active: true, expiresAt: now + 30*24*60*60*1000, usageLimit: 500, usedCount: 0 }

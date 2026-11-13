@@ -77,13 +77,13 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text('DirecciÃ³n de entrega'),
+        title: const Text('Dirección de entrega'),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLines: 2,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(hintText: 'Calle, nÃºmero, colonia y referencias'),
+          decoration: const InputDecoration(hintText: 'Calle, número, colonia y referencias'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
@@ -100,7 +100,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
     setState(() => _saving = true);
     try {
       await app.updateProfile({'address': value});
-      if (mounted) showSnack(context, 'DirecciÃ³n actualizada.');
+      if (mounted) showSnack(context, 'Dirección actualizada.');
     } on ApiException catch (e) {
       if (mounted) showSnack(context, e.message, error: true);
     } finally {
@@ -113,8 +113,8 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text('Cerrar sesiÃ³n'),
-        content: const Text('Â¿Quieres salir de tu cuenta VelozEat?'),
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Quieres salir de tu cuenta VelozEat?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           FilledButton(
@@ -200,14 +200,14 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
           SurfaceCard(
             child: Column(
               children: [
-                _row(Icons.phone_outlined, 'TelÃ©fono', user.phone.isEmpty ? 'Sin registrar' : user.phone),
+                _row(Icons.phone_outlined, 'Teléfono', user.phone.isEmpty ? 'Sin registrar' : user.phone),
                 const Divider(height: 22),
                 _row(Icons.mail_outline, 'Correo', user.email),
                 const Divider(height: 22),
                 _row(
                   Icons.location_on_outlined,
-                  'DirecciÃ³n',
-                  user.address.isEmpty ? 'Agrega tu direcciÃ³n de entrega' : user.address,
+                  'Dirección',
+                  user.address.isEmpty ? 'Agrega tu dirección de entrega' : user.address,
                   action: _saving
                       ? const SizedBox(
                           width: 18,
@@ -232,7 +232,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
             color: kBrand.withValues(alpha: 0.05),
             child: Row(
               children: [
-                const Text('â¡', style: TextStyle(fontSize: 26)),
+                const Text('', style: TextStyle(fontSize: 26)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -241,7 +241,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                       const Text('Modo demo', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 2),
                       Text(
-                        'Los pagos con tarjeta son simulados. Para probar el flujo completo usa otra sesiÃ³n como restaurante o repartidor.',
+                        'Los pagos con tarjeta son simulados. Para probar el flujo completo usa otra sesión como restaurante o repartidor.',
                         style: TextStyle(fontSize: 11.5, color: kMuted.withValues(alpha: 0.95), height: 1.35),
                       ),
                     ],
@@ -285,11 +285,11 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
           OutlinedButton(
             onPressed: _logout,
             style: OutlinedButton.styleFrom(foregroundColor: kRed, side: const BorderSide(color: kRed)),
-            child: const Text('Cerrar sesiÃ³n'),
+            child: const Text('Cerrar sesión'),
           ),
           const SizedBox(height: 14),
           Center(
-            child: Text('VelozEat v1.0 Â· ${app.api.baseUrl}',
+            child: Text('VelozEat v1.0 · ${app.api.baseUrl}',
                 style: const TextStyle(fontSize: 10.5, color: kMuted)),
           ),
         ],

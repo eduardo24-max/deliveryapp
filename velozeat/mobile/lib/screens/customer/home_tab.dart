@@ -88,7 +88,7 @@ class _HomeTabState extends State<HomeTab> {
     if (!mounted) return;
     setState(() => _locating = false);
     if (position == null) {
-      showSnack(context, 'No se pudo obtener tu ubicaciÃ³n. Activa el GPS y dale permiso a VelozEat.', error: true);
+      showSnack(context, 'No se pudo obtener tu ubicación. Activa el GPS y dale permiso a VelozEat.', error: true);
       return;
     }
     setState(() {
@@ -186,7 +186,7 @@ class _HomeTabState extends State<HomeTab> {
               ],
             ),
             const SizedBox(height: 20),
-            Text('Hola, $firstName ð', style: Theme.of(context).textTheme.headlineMedium),
+            Text('Hola, $firstName ', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 5),
             Row(
               children: [
@@ -194,7 +194,7 @@ class _HomeTabState extends State<HomeTab> {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    (user?.address.isNotEmpty ?? false) ? user!.address : 'Agrega tu direcciÃ³n en tu perfil',
+                    (user?.address.isNotEmpty ?? false) ? user!.address : 'Agrega tu dirección en tu perfil',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12.5, color: kMuted, fontWeight: FontWeight.w600),
@@ -216,8 +216,8 @@ class _HomeTabState extends State<HomeTab> {
                   Expanded(
                     child: Text(
                       _lat == null
-                          ? 'Usar mi ubicaciÃ³n actual para calcular el envÃ­o'
-                          : 'UbicaciÃ³n GPS activa Â· tocar para quitar',
+                          ? 'Usar mi ubicación actual para calcular el envío'
+                          : 'Ubicación GPS activa · tocar para quitar',
                       style: const TextStyle(fontSize: 11.5, color: kBrand, fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -285,7 +285,7 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text('ðµ', style: TextStyle(fontSize: 56)),
+                  const Text('', style: TextStyle(fontSize: 56)),
                 ],
               ),
             ),
@@ -333,7 +333,7 @@ class _HomeTabState extends State<HomeTab> {
               const LoadingBox(label: 'Buscando restaurantes...')
             else if (_error != null)
               EmptyState(
-                emoji: 'ð¡',
+                emoji: '',
                 title: 'No pudimos cargar los restaurantes',
                 subtitle: _error!,
                 action: FilledButton(
@@ -344,7 +344,7 @@ class _HomeTabState extends State<HomeTab> {
               )
             else if (_filtered.isEmpty)
               EmptyState(
-                emoji: 'ð',
+                emoji: '',
                 title: _restaurants.isEmpty ? 'Aun no hay restaurantes' : 'Sin resultados',
                 subtitle: _restaurants.isEmpty ? 'Se el primero en registrar tu restaurante y empezar a vender.' : 'Prueba con otra busqueda o categoria.',
               )
@@ -422,15 +422,15 @@ class _RestaurantCard extends StatelessWidget {
                         Text(' (${restaurant.ratingCount})',
                             style: const TextStyle(fontSize: 11, color: kMuted)),
                         const SizedBox(width: 6),
-                        Text('Â· ${restaurant.category}',
+                        Text('· ${restaurant.category}',
                             style: const TextStyle(fontSize: 11.5, color: kMuted, fontWeight: FontWeight.w600)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       restaurant.distanceKm == null
-                          ? '${restaurant.etaMinutes} min Â· EnvÃ­o desde ${money(restaurant.deliveryFee)} Â· MÃ­n ${money(restaurant.minOrder)}'
-                          : '${restaurant.distanceKm!.toStringAsFixed(1)} km Â· ${restaurant.etaMinutes} min Â· EnvÃ­o desde ${money(restaurant.deliveryFee)} Â· MÃ­n ${money(restaurant.minOrder)}',
+                          ? '${restaurant.etaMinutes} min · Envío desde ${money(restaurant.deliveryFee)} · Mín ${money(restaurant.minOrder)}'
+                          : '${restaurant.distanceKm!.toStringAsFixed(1)} km · ${restaurant.etaMinutes} min · Envío desde ${money(restaurant.deliveryFee)} · Mín ${money(restaurant.minOrder)}',
                       style: const TextStyle(fontSize: 11.5, color: kMuted, fontWeight: FontWeight.w600),
                     ),
                   ],

@@ -80,7 +80,7 @@ class MenuItem {
         description: asString(json['description']),
         price: asDouble(json['price']),
         category: asString(json['category']),
-        emoji: asString(json['emoji']).isEmpty ? 'ð½ï¸' : asString(json['emoji']),
+        emoji: asString(json['emoji']).isEmpty ? '' : asString(json['emoji']),
         available: json['available'] != false,
       );
 }
@@ -143,7 +143,7 @@ class Restaurant {
       id: asString(json['id']),
       name: asString(json['name']),
       category: asString(json['category']),
-      emoji: asString(json['emoji']).isEmpty ? 'ð½ï¸' : asString(json['emoji']),
+      emoji: asString(json['emoji']).isEmpty ? '' : asString(json['emoji']),
       color: asString(json['color']).isEmpty ? '#7C3AED' : asString(json['color']),
       description: asString(json['description']),
       address: asString(json['address']),
@@ -182,7 +182,7 @@ class OrderItem {
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
         itemId: asString(json['itemId']),
         name: asString(json['name']),
-        emoji: asString(json['emoji']).isEmpty ? 'ð½ï¸' : asString(json['emoji']),
+        emoji: asString(json['emoji']).isEmpty ? '' : asString(json['emoji']),
         price: asDouble(json['price']),
         qty: asInt(json['qty']),
       );
@@ -296,7 +296,7 @@ class Order {
       rating: json['rating'] == null ? null : asInt(json['rating']),
       ratingComment: asString(json['ratingComment']),
       restaurantName: asString(json['restaurantName']),
-      restaurantEmoji: asString(json['restaurantEmoji']).isEmpty ? 'ð½ï¸' : asString(json['restaurantEmoji']),
+      restaurantEmoji: asString(json['restaurantEmoji']).isEmpty ? '' : asString(json['restaurantEmoji']),
       restaurantColor: asString(json['restaurantColor']).isEmpty ? '#7C3AED' : asString(json['restaurantColor']),
       restaurantAddress: asString(json['restaurantAddress']),
       customerName: asString(json['customerName']),
@@ -348,9 +348,9 @@ class DriverProfile {
       };
 
   String get vehicleEmoji => switch (vehicle) {
-        'bici' => 'ð²',
-        'auto' => 'ð',
-        _ => 'ðµ',
+        'bici' => '',
+        'auto' => '',
+        _ => '',
       };
 }
 

@@ -211,7 +211,7 @@ class _DriverShellState extends State<DriverShell> {
     if (_error != null && _profile == null) {
       return Scaffold(
         body: EmptyState(
-          emoji: '📡',
+          emoji: '',
           title: 'No pudimos cargar tu panel',
           subtitle: _error!,
           action: FilledButton(
@@ -332,12 +332,12 @@ class _HomeTab extends StatelessWidget {
               children: [
                 const AppLogo(size: 21),
                 const Spacer(),
-                Text('${profile?.vehicleEmoji ?? '🛵'} ${profile?.vehicleLabel ?? ''}',
+                Text('${profile?.vehicleEmoji ?? ''} ${profile?.vehicleLabel ?? ''}',
                     style: const TextStyle(fontSize: 11.5, color: kMuted, fontWeight: FontWeight.w700)),
               ],
             ),
             const SizedBox(height: 20),
-            Text('Hola, $firstName 👋', style: Theme.of(context).textTheme.headlineMedium),
+            Text('Hola, $firstName ', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 4),
             Text(online ? 'Estás en línea y listo para repartir.' : 'Conéctate para ver pedidos disponibles.',
                 style: const TextStyle(fontSize: 12.5, color: kMuted)),
@@ -380,9 +380,9 @@ class _HomeTab extends StatelessWidget {
             const SizedBox(height: 14),
             Row(
               children: [
-                Expanded(child: _Stat(emoji: '💵', value: money(todayEarnings), label: 'Ganancias hoy')),
+                Expanded(child: _Stat(emoji: '', value: money(todayEarnings), label: 'Ganancias hoy')),
                 const SizedBox(width: 10),
-                Expanded(child: _Stat(emoji: '📦', value: '$todayDeliveries', label: 'Entregas hoy')),
+                Expanded(child: _Stat(emoji: '', value: '$todayDeliveries', label: 'Entregas hoy')),
                 const SizedBox(width: 10),
                 Expanded(child: _Stat(emoji: '⭐', value: rating.toStringAsFixed(1), label: 'Calificación')),
               ],
@@ -402,7 +402,7 @@ class _HomeTab extends StatelessWidget {
             const SizedBox(height: 4),
             if (!online)
               EmptyState(
-                emoji: '🛵',
+                emoji: '',
                 title: 'Estás desconectado',
                 subtitle: 'Ponte en línea para empezar a recibir pedidos listos de los restaurantes.',
                 action: FilledButton(
@@ -653,7 +653,7 @@ class _HistoryTab extends StatelessWidget {
           const SizedBox(height: 16),
           if (recent.isEmpty)
             const EmptyState(
-              emoji: '📦',
+              emoji: '',
               title: 'Aún no tienes entregas',
               subtitle: 'Cuando completes tu primera entrega aparecerá aquí.',
             )
@@ -737,7 +737,7 @@ class _DriverProfileTab extends StatelessWidget {
                     height: 58,
                     decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), shape: BoxShape.circle),
                     alignment: Alignment.center,
-                    child: Text(profile?.vehicleEmoji ?? '🛵', style: const TextStyle(fontSize: 28)),
+                    child: Text(profile?.vehicleEmoji ?? '', style: const TextStyle(fontSize: 28)),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -772,9 +772,9 @@ class _DriverProfileTab extends StatelessWidget {
               children: [
                 Expanded(child: _Stat(emoji: '⭐', value: rating.toStringAsFixed(1), label: 'Calificación')),
                 const SizedBox(width: 10),
-                Expanded(child: _Stat(emoji: '📦', value: '$totalDeliveries', label: 'Entregas')),
+                Expanded(child: _Stat(emoji: '', value: '$totalDeliveries', label: 'Entregas')),
                 const SizedBox(width: 10),
-                Expanded(child: _Stat(emoji: '💵', value: money(profile?.earnings ?? 0), label: 'Ganancias')),
+                Expanded(child: _Stat(emoji: '', value: money(profile?.earnings ?? 0), label: 'Ganancias')),
               ],
             ),
             const SizedBox(height: 16),
