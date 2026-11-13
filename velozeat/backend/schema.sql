@@ -135,6 +135,13 @@ CREATE TABLE IF NOT EXISTS notifications (
     read BOOLEAN DEFAULT FALSE
 );
 
+-- Tabla para almacenar todo el estado de la app como JSON (migración simple)
+CREATE TABLE IF NOT EXISTS app_state (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    data JSONB NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
 -- Índices para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_restaurant ON orders(restaurant_id);
